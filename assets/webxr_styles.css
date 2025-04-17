@@ -1,0 +1,95 @@
+/* assets/webxr_styles.css */
+
+/* This keeps child nodes hidden while the element loads */
+:not(:defined) > * {
+  display: none;
+}
+
+/* Style the viewer itself if needed */
+#model-viewer-xr { /* Use the ID assigned in the Dash layout */
+  background-color: #eee;
+  overflow-x: hidden;
+  width: 100%;
+  height: 600px; /* Define a height */
+  position: relative; /* Needed for absolute positioning of children like the slider */
+}
+
+/* Styling for the custom AR prompt/failure passed as components */
+#ar-prompt img {
+  animation: circle 4s linear infinite;
+  /* Ensure it's visible when needed (handled by model-viewer internally) */
+}
+#ar-failure {
+   /* Basic styling for the failure message */
+   color: red;
+   font-weight: bold;
+}
+
+
+/* --- Slider Styles --- */
+/* Place slider relative to the main container */
+.slider-container {
+  width: 90%;
+  margin: 10px auto;
+  text-align: center;
+  overflow: hidden;
+  /* position: absolute; /* Or keep it below */
+  /* bottom: 16px; */
+  /* left: 50%; */
+  /* transform: translateX(-50%); */
+}
+
+.slides {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 10px; /* Space for scrollbar */
+}
+
+.slide {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: #fff;
+  margin-right: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc; /* Default border */
+  display: flex;
+  cursor: pointer;
+  padding: 0; /* Reset default button padding */
+}
+
+.slide.selected {
+  border: 2px solid #4285f4;
+}
+
+.slide:focus {
+  outline: none;
+}
+
+.slide:focus-visible {
+  outline: 1px solid #4285f4;
+}
+
+/* --- AR Prompt/Failure Animations (adapted from original) --- */
+/* Note: model-viewer handles showing/hiding these based on internal state */
+/* We just style the elements passed via customArPrompt/customArFailure */
+
+@keyframes circle {
+  from { transform: translateX(-50%) rotate(0deg) translateX(50px) rotate(0deg); }
+  to   { transform: translateX(-50%) rotate(360deg) translateX(50px) rotate(-360deg); }
+}
+
+/* This elongate animation was tied to the prompt container *inside* model-viewer */
+/* Replicating it exactly might be complex without direct slot access */
+/* The circle animation on the image itself is preserved */
+
+/* We rely on the underlying model-viewer component to show/hide */
+/* the #ar-prompt and #ar-failure divs based on ar-status/ar-tracking */
+/* The React component places the customArPrompt/Failure content inside these divs */

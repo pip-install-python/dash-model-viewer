@@ -1,0 +1,72 @@
+.view-button {
+        background: #fff;
+        border-radius: 4px;
+        border: none;
+        box-sizing: border-box;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+        color: rgba(0, 0, 0, 0.8);
+        display: block;
+        font-family: Futura, Helvetica Neue, sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        max-width: 128px;
+        overflow-wrap: break-word;
+        padding: 0.5em 1em;
+        position: absolute;
+        width: max-content;
+        height: max-content;
+        transform: translate3d(-50%, -50%, 0);
+    }
+
+
+/* assets/dynamic_hotspots_styles.css */
+
+/* Reticle Style */
+.reticle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid red;
+    border-radius: 50%;
+    pointer-events: none; /* Allows clicks to pass through to the model */
+    box-sizing: border-box;
+    z-index: 10; /* Ensure it's above the model */
+}
+
+/* Base hotspot style */
+.hotspot {
+  display: block;
+  position: absolute;
+  pointer-events: auto; /* Allow interaction if needed later */
+  /* Basic visual, override with specific classes */
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: sans-serif;
+  min-width: 10px; /* Ensure even small hotspots are visible */
+  text-align: center;
+  z-index: 1;
+}
+
+/* Style for dynamically added hotspots */
+.hotspot-dynamic {
+  background-color: rgba(255, 0, 0, 0.7); /* Red background */
+  color: white;
+  border: 1px solid white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: default; /* Or pointer if you add click events */
+}
+
+/* Hide class */
+.hide {
+    display: none !important;
+}
+

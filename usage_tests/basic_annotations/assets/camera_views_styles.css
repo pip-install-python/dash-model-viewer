@@ -1,0 +1,85 @@
+/* assets/camera_views_styles.css */
+
+/* Base hotspot style (ensure it allows clicks) */
+.hotspot {
+  position: absolute; /* Always needed */
+  pointer-events: auto; /* Allow clicks */
+  /* Add default visual if not dot/dim/button? */
+  /* Can be empty if only used as a base class */
+  display: block; /* Needed for positioning */
+}
+
+
+/* Styles specifically for camera view buttons */
+.view-button {
+  background: #fff;
+  border-radius: 4px;
+  border: none;
+  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  color: rgba(0, 0, 0, 0.8);
+  /* display: block; /* Already in .hotspot */
+  font-family: Futura, Helvetica Neue, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  max-width: 128px;
+  overflow-wrap: break-word;
+  padding: 0.5em 1em;
+  /* position: absolute; /* Already in .hotspot */
+  width: max-content;
+  height: max-content;
+  cursor: pointer; /* Indicate interactivity */
+  /* transform: translate3d(-50%, -50%, 0); /* REMOVED - Model-viewer handles positioning */
+  z-index: 1; /* Ensure buttons are clickable above other elements if needed */
+}
+
+/* --- Add styles from previous examples if needed --- */
+
+.dot {
+  /* Styles from dimension example */
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background-color: rgba(30, 144, 255, 0.7); /* Semi-transparent dodgerblue */
+  border: 1px solid white;
+  position: absolute; /* Required */
+  pointer-events: none; /* Usually dots aren't clickable */
+  box-sizing: border-box;
+  z-index: 0;
+}
+
+.dim {
+  /* Styles from dimension example */
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  border: none;
+  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  color: rgba(0, 0, 0, 0.9);
+  display: block;
+  font-family: Futura, Helvetica Neue, sans-serif;
+  font-size: 1em; /* Adjust as needed */
+  font-weight: 700;
+  max-width: 128px;
+  overflow-wrap: break-word;
+  padding: 0.5em 1em;
+  position: absolute; /* Required */
+  width: max-content;
+  height: max-content;
+  pointer-events: none; /* Dimension labels usually aren't clickable */
+  --min-hotspot-opacity: 0.1;
+  z-index: 1;
+}
+
+.dimensionLine {
+ /* Styles from dimension example */
+  stroke: #16a5e6; /* Blue color */
+  stroke-width: 2;
+  stroke-dasharray: 3 2; /* Dashed line style */
+}
+
+/* Class to hide elements (used by dimensions example) */
+.hide {
+  display: none !important;
+}

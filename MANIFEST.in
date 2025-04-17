@@ -1,0 +1,11 @@
+include dash_model_viewer/dash_model_viewer.min.js
+include dash_model_viewer/dash_model_viewer.min.js.map
+include dash_model_viewer/async-*.js
+include dash_model_viewer/async-*.js.map
+include dash_model_viewer/*-shared.js
+include dash_model_viewer/*-shared.js.map
+include dash_model_viewer/metadata.json
+include dash_model_viewer/package-info.json
+include README.md
+include LICENSE
+include package.json
