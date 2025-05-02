@@ -9,6 +9,9 @@
 
 `dash-model-viewer` is a Dash component library that wraps Google's `<model-viewer>` web component, allowing you to easily display and interact with 3D models (.glb, .gltf) within your Python Dash dashboards. 
 
+----
+## Currently only works woth dash==3.0.3 (update coming soon)
+
 **Key Features:**
 
 *   **Simple 3D Model Display:** Easily load and display 3D models from URLs.
