@@ -105,6 +105,83 @@ def test_the_package_name_is_in_the_description_not_the_brand():
     assert "Pip Install Python" not in SITE_BRAND
 
 
+# ---------------------------------------------------------------------------
+# The meta description, and the copy of it that lives in the static template
+# ---------------------------------------------------------------------------
+
+# Google truncates meta descriptions around 155 characters. 160 is the ceiling
+# rather than 155 so a one-word edit does not fail the suite, but the intent is
+# the shorter number.
+META_DESCRIPTION_LIMIT = 160
+
+
+def test_the_meta_description_fits_in_a_search_result():
+    """A description Google cuts in half is a description half-written.
+
+    `register_page(description=)` publishes this verbatim as
+    <meta name="description">, og:description and twitter:description. This
+    site shipped 360 characters, so everything after "...with Augmented
+    Reality (AR) support" — including the part that says why this package
+    exists at all — never appeared in a result or a social preview.
+
+    The long prose belongs on the home page, in the README and in /llms.txt,
+    none of which are length-penalised. This is a tagline, not a summary.
+    """
+    assert len(SITE_DESCRIPTION) <= META_DESCRIPTION_LIMIT, (
+        f"SITE_DESCRIPTION is {len(SITE_DESCRIPTION)} characters; search "
+        f"results cut it at roughly {META_DESCRIPTION_LIMIT}."
+    )
+
+
+def test_the_static_template_repeats_the_same_description():
+    """templates/index.html hard-codes a JSON-LD description, and it drifted.
+
+    It cannot import lib.constants — it is a static template — so the string is
+    duplicated by hand, and a hand-duplicated string is one that will disagree
+    eventually. It already did: this file shipped carrying the BOILERPLATE's
+    description, its softwareVersion and its GitHub repo, on a page whose
+    <title> said dash-model-viewer. Nothing a human reads showed it; only the
+    crawler document was wrong.
+
+    So the duplicate is allowed, and checked.
+    """
+    html = (REPO_ROOT / "templates" / "index.html").read_text()
+    # The template escapes the em dash as a JSON \u2014 escape.
+    expected = SITE_DESCRIPTION.replace("—", "\\u2014")
+    assert f'"description": "{expected}"' in html, (
+        "templates/index.html's JSON-LD description does not match "
+        "SITE_DESCRIPTION. Update the template to the same sentence — two "
+        "descriptions means the crawler and the browser are told different "
+        "things about the same site."
+    )
+
+
+def test_meta_keywords_describe_this_app_not_the_template():
+    """Inherited keywords are a fork that never introduced itself.
+
+    Google has ignored this tag since 2009, so nothing here moves a ranking —
+    but other consumers read it, and a page whose keywords say "markdown docs,
+    documentation, developer tools" is describing the boilerplate it was
+    forked from rather than a 3D and AR component.
+    """
+    html = (REPO_ROOT / "templates" / "index.html").read_text()
+    match = re.search(r'<meta name="keywords" content="([^"]*)"', html)
+    assert match, "no keywords meta tag"
+    terms = [t.strip().lower() for t in match.group(1).split(",")]
+
+    assert "dash-model-viewer" in terms, "the keywords do not name the package"
+    for subject in ("3d", "ar", "model-viewer"):
+        assert any(subject in t for t in terms), (
+            f"no keyword mentions {subject!r} — these are the terms this site "
+            "should actually be found for"
+        )
+    # The template's own leftovers, which said nothing about 3D.
+    for inherited in ("markdown docs", "documentation", "developer tools"):
+        assert inherited not in terms, (
+            f"{inherited!r} is an inherited boilerplate keyword"
+        )
+
+
 def test_no_surface_falls_back_to_a_generic_title():
     """The values `resolve_site_title` is designed to skip.
 

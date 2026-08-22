@@ -123,7 +123,16 @@ python-dotenv>=1.0.0
 # Installed from PyPI. (2.1.0 and 2.3.1 were assigned during that package's
 # development and never published.)
 #
-# 2.6.0 is the network floor, and run.py enforces it fatally. It is what makes
+# 2.6.1 is the network floor, and run.py enforces it fatally.
+#
+# 2.6.1 makes the prerendered body visible to consumers that do not run
+# JavaScript: the `#dimll-prerender` div previously carried a `hidden`
+# attribute, so a plain fetch — curl, a link unfurler, an agent without a
+# browser engine — got markup that was present but declared invisible, and
+# any consumer honouring the attribute read an empty page. The prose was
+# always there; nothing could see it without executing scripts.
+#
+# 2.6.0 is what makes
 # `lastmod=` on register_page_metadata reach the sitemap: below it the keyword
 # is swallowed into **kwargs and silently ignored, so <lastmod> reverts to
 # invented build dates — a sitemap swearing all ten pages changed today, on
@@ -158,10 +167,10 @@ python-dotenv>=1.0.0
 # tests/test_llms_routes.py asserts that split, and scripts/network_smoke.py
 # asserts it against a live host, so a stale artifact fails a battery by name
 # rather than serving quietly.
-dash-improve-my-llms[flask]>=2.6.0
-# dash-improve-my-llms[fastapi]>=2.6.0   # Dash 4.4+ FastAPI backend
-# dash-improve-my-llms[quart]>=2.6.0     # Dash 4.4+ Quart backend
-# dash-improve-my-llms[all]>=2.6.0       # all three
+dash-improve-my-llms[flask]>=2.6.1
+# dash-improve-my-llms[fastapi]>=2.6.1   # Dash 4.4+ FastAPI backend
+# dash-improve-my-llms[quart]>=2.6.1     # Dash 4.4+ Quart backend
+# dash-improve-my-llms[all]>=2.6.1       # all three
 
 # Clerk authentication (dash-clerk-auth, vendored — not on PyPI).
 #

@@ -59,7 +59,12 @@ from dash_improve_my_llms import (
 # `resolve_site_title` does not exist: the /llms.txt H1 and the llms-viewer
 # brand chip fall back to `app.title` unconditionally, and a nav label or
 # Dash's default "Dash" becomes this site's published identity.
-# 2.6.0 is the wave floor. It is what makes `lastmod=` on
+# 2.6.1 is the floor. It unhides the prerendered body: the
+# `#dimll-prerender` div used to ship with a `hidden` attribute, so every
+# non-JS consumer — curl, unfurlers, agents without a browser engine — was
+# handed prose that was technically present and explicitly invisible.
+#
+# 2.6.0 is what makes `lastmod=` on
 # `register_page_metadata` reach the sitemap: below it the keyword is accepted
 # into **kwargs and SILENTLY IGNORED, so every date this repo stamps is
 # swallowed and <lastmod> reverts to invented build dates — a sitemap that
@@ -69,7 +74,7 @@ from dash_improve_my_llms import (
 # de-dup. `configure_seo` is deliberately imported AFTER this floor fires (see
 # the floors block) so a stale environment gets the floor's diagnosis instead
 # of a bare ImportError.
-LLMS_PKG_FLOOR = (2, 6, 0)
+LLMS_PKG_FLOOR = (2, 6, 1)
 
 # THE FORK POINT — claim this app's network identity before any hub-facing
 # module imports. Every module that names this app (satellite_reporter,
@@ -161,7 +166,9 @@ if LLMS_PKG_FLOOR > _version(LLMS_PKG_VERSION):
     _dependency_floor(
         f"dash-improve-my-llms {LLMS_PKG_VERSION} is below the "
         f"{'.'.join(str(n) for n in LLMS_PKG_FLOOR)} floor in requirements.txt. "
-        "Below 2.6.0 the sitemap goes back to lying: `lastmod=` is accepted "
+        "Below 2.6.1 the prerendered body ships with a `hidden` attribute, "
+        "so every non-JavaScript consumer reads an empty page. Below "
+        "2.6.0 the sitemap goes back to lying: `lastmod=` is accepted "
         "into **kwargs and SILENTLY IGNORED, so every date this repo stamped "
         "is swallowed and <lastmod> reverts to invented build dates. Below "
         "2.5.1 the Tier-B SEO standard additionally unwinds: `configure_seo` "

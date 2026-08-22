@@ -25,12 +25,20 @@ import os
 #   - "Pip Install Python" is the byline (who made it), never the site name.
 SITE_BRAND = "dash-model-viewer — interactive 3D models and AR for Dash"
 
+# 149 characters, and the ceiling is the point: this string becomes the
+# `<meta name="description">`, og:description and twitter:description via
+# `register_page(description=)`, and Google truncates those around 155. The
+# previous version ran to 360 — so the half that actually said what makes this
+# package different ("works offline", "no CDN") was cut off in every search
+# result and every social preview, which is the half worth keeping.
+#
+# The long prose did not go anywhere: it belongs in the home page body, the
+# README and /llms.txt, none of which are length-penalised. A tagline is not a
+# summary. tests/test_site_identity.py pins the ceiling.
 SITE_DESCRIPTION = (
-    "dash-model-viewer — embed interactive 3D models directly into your Dash "
-    "applications with Augmented Reality (AR) support. A Dash wrapper around "
-    "Google's model-viewer, vendored so it works offline, behind a proxy and "
-    "under a strict CSP. Camera, load state, model dimensions, AR status and "
-    "hotspot clicks all arrive as ordinary Dash props. By Pip Install Python."
+    "dash-model-viewer — interactive 3D models and AR for Dash. Google's "
+    "model-viewer vendored in the wheel: no CDN, works offline. "
+    "By Pip Install Python."
 )
 
 # Resolves {%title%} in templates/index.html, which is what the served HTML
