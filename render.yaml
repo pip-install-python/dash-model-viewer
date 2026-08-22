@@ -1,72 +1,69 @@
-# Render Blueprint for modelviewer.2plot.dev
+# Render Blueprint — modelviewer.2plot.dev (single web service, docker runtime).
 #
-# Applies to a new service with `render blueprint launch`. Values marked
-# sync:false are per-deployment and must be set in the Render dashboard.
+# Auto-deploys on push to main. Serves the dash-model-viewer documentation.
 #
-# THIS RUNS ON THE FREE PLAN. Three consequences, all of which are worked
-# around below rather than discovered in production:
+# THIS HOST HAS NEVER DEPLOYED. Everything below is authored, not verified
+# against a running service — the owner-side steps in DEPLOY-READINESS.md are
+# what turn it into a live host, and live verification runs after that.
 #
-#   1. No persistent disks. The `disk:` block and TRAFFIC_ANALYTICS_FILE that
-#      the boilerplate uses to survive a mid-day deploy are removed. The
-#      analytics ledger is therefore ephemeral: a deploy resets the day's
-#      counters and the next hourly rollup reports only what accrued since.
-#      Accepted, and stated here so nobody debugs it as a bug.
-#   2. The instance spins down after ~15 minutes idle, and a cold start takes
-#      tens of seconds. Every live check must wake-and-retry before asserting
-#      (scripts/smoke_live.py does; LESSONS.md §21).
-#   3. 512 MB RAM, shared CPU. One worker, not two — see startCommand.
+# WHY DOCKER AND NOT `runtime: python`
+# ------------------------------------
+# The site documents the package in THIS checkout (`pip install .`), and the
+# package ships a ~1 MB vendored model-viewer bundle as package data. A Docker
+# build makes the install order explicit and reproducible — and the container
+# battery in CI then tests the same image the service runs, rather than a
+# best-effort reconstruction of it. Same base Python as the service, always:
+# the Dockerfile is FROM python:3.12-slim and PYTHON_VERSION below is 3.12.
+#
+# BLUEPRINT ENV IS NOT SERVICE ENV — read this before debugging anything.
+# Render applies the envVars below on a BLUEPRINT SYNC, not on an autoDeploy
+# from a git push. Anything listed here must ALSO exist on the service in the
+# dashboard. The fleet has shipped wired code against an unwired deployment
+# exactly this way more than once: the pilot host ran for weeks with
+# PAGE_VISIBILITY_FILE declared here and absent live, so every control-board
+# toggle silently reset on each deploy.
+#
+# THE ENV GROUPS DO MOST OF THIS. Link all three at service creation and the
+# shared values arrive without being retyped here:
+#   2plot-network-shared      the cross-app webhook secret, bulletin URL
+#   2plot-satellite-reporting reporting cadence + BOTH /var/data paths
+#   2plot-clerk-satellite     the whole Clerk block incl. the sign-in redirect
+# What remains per-service is identity: SATELLITE_APP_KEY, APP_BASE_URL,
+# AD_APP_ID, and a SESSION_SECRET unique to this host.
 services:
   - type: web
-    name: modelviewer-2plot-dev
-    runtime: python
-    plan: free
+    name: dash-model-viewer-docs
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     region: oregon
     branch: main
-    # Two commands, not one: markdown2dash 0.1.2 declares gunicorn<22 against
-    # the CVE-driven gunicorn>=23 floor in requirements.txt, so it is installed
-    # without its dependency graph. Same pair as the Dockerfile and CI.
-    #
-    # `pip install .` puts dash-model-viewer itself in the image from this
-    # checkout — the site documents the version in this repo, not the version
-    # that happens to be on PyPI. That is what makes the docs a regression test
-    # for the package rather than a description of it.
-    buildCommand: pip install -r requirements.txt && pip install --no-deps markdown2dash==0.1.2 && pip install .
-    # One worker. Two 512 MB-shared workers each importing pandas, plotly and
-    # dash-mantine-components is how a free instance gets OOM-killed mid-deploy
-    # and Render reports it as a failed health check.
-    startCommand: gunicorn run:server -b 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     healthCheckPath: /healthz
+    autoDeploy: true
+    # Render provisions the certificate once the CNAME resolves. The
+    # *.onrender.com hostname keeps working and is NOT the canonical origin —
+    # every page advertises modelviewer.2plot.dev, so hits on the Render
+    # hostname consolidate onto the custom domain rather than competing.
     domains:
       - modelviewer.2plot.dev
+
     envVars:
-      # THE value to get right. It drives <link rel="canonical">, sitemap.xml
-      # and the absolute URLs in llms.txt. A fork that leaves this unset
-      # inherits the boilerplate's own domain and tells Google it is a
-      # duplicate — so lib/constants.py refuses to boot on Render without it.
+      # ---- identity: per-service, never from a group --------------------
+      #
+      # THE value to get right. It drives <link rel="canonical">, og:url,
+      # sitemap.xml, robots.txt and every absolute URL in llms.txt. A fork
+      # that leaves this unset inherits the boilerplate's own domain and tells
+      # Google it is a duplicate — so lib/constants.py refuses to boot on
+      # Render without it.
       - key: APP_BASE_URL
         value: https://modelviewer.2plot.dev
 
-      - key: PYTHON_VERSION
-        value: "3.12.0"
-
-      # flask | fastapi | quart. FastAPI and Quart need the matching dash
-      # extra installed and an ASGI start command (uvicorn), so switching this
-      # alone is not enough.
-      - key: DASH_BACKEND
-        value: flask
-
-      # Dash 4.3+ MCP server. Off by default: it is a live introspection
-      # surface on a public host.
-      - key: DASH_MCP_ENABLED
-        value: "0"
-
-      # Network analytics — the hourly signed rollup POSTed to 2plot.ai.
-      # Without the secret, reporting is off and the app says so at startup.
-      - key: CROSS_APP_WEBHOOK_SECRET
-        sync: false
-
-      # ONE short app id, everywhere. Directory key = subdomain slug.
-      # Also the bulletin's identity to the hub (lib/bulletin.py).
+      # ONE short app id, everywhere. Directory key = subdomain slug. Also the
+      # bulletin's identity to the hub (lib/bulletin.py). run.py setdefault()s
+      # this same string as the FORK POINT, so an unset variable degrades to
+      # the right value rather than to the template's — but set it anyway:
+      # the code default exists to close a gap, not to be relied on.
       - key: SATELLITE_APP_KEY
         value: modelviewer
 
@@ -77,25 +74,183 @@ services:
       - key: AD_APP_ID
         value: modelviewer
 
-      # Hub-published tips and announcements in the llms.txt viewer header.
-      #
-      # Blueprint envVars apply on Blueprint SYNC, not on git-push autodeploys
-      # (LESSONS.md §10). If the viewer header shows one generic tip where the
-      # hub publishes more, this is unwired — set it on the SERVICE too.
-      - key: NETWORK_BULLETIN_URL
-        value: https://2plot.dev/api/network/bulletin
+      # Signs the session + __dca_identity cookies. Without it dash-clerk-auth
+      # falls back to a PUBLIC dev default string. generateValue makes this
+      # unique to THIS service — never copy another host's value in.
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # ---- runtime ------------------------------------------------------
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+      # flask | fastapi | quart. FastAPI and Quart need the matching dash
+      # extra installed and an ASGI start command (uvicorn), so switching this
+      # alone is not enough. Note dash-clerk-auth 1.0.4 is the first release
+      # whose FastAPI auth endpoints are callable at all — do not move this
+      # host to fastapi on an older vendored tarball.
+      - key: DASH_BACKEND
+        value: flask
+
+      # Dash 4.3+ MCP server. Off by default: it is a live introspection
+      # surface on a public host.
+      - key: DASH_MCP_ENABLED
+        value: "0"
 
       # Behind Cloudflare the country header is already present, so the
       # ip-api.com lookup is redundant latency.
       - key: ANALYTICS_GEO_LOOKUP
         value: "0"
 
-# NOTE: no `disk:` block — the free plan does not support persistent disks.
-# On a paid plan, re-add the boilerplate's:
-#
-#     - key: TRAFFIC_ANALYTICS_FILE
-#       value: /var/data/visitor_analytics.json
-#     disk:
-#       name: analytics
-#       mountPath: /var/data
-#       sizeGB: 1
+      # ---- group A: 2plot-network-shared --------------------------------
+      #
+      # The signed rollup POSTed to 2plot.ai. Without the secret, reporting is
+      # off and the app says so at startup.
+      - key: CROSS_APP_WEBHOOK_SECRET
+        sync: false
+
+      # Hub-published tips and announcements in the llms.txt viewer header.
+      # Unset, the header still renders with an empty state — no error either
+      # way, so the boot line "network bulletin: ..." is how you tell which
+      # state you are in.
+      - key: NETWORK_BULLETIN_URL
+        value: https://2plot.dev/api/network/bulletin
+
+      # ---- group B: 2plot-satellite-reporting ---------------------------
+      #
+      # 15 minutes, not the code default of hourly: the fleet is on paid
+      # instances and the hub board reads near-real-time. The live "active
+      # now" number rides the separate presence beacon
+      # (SATELLITE_PRESENCE_INTERVAL_S, default 60s, 0 disables) — this knob
+      # only paces the daily rollup.
+      - key: SATELLITE_REPORT_INTERVAL_S
+        value: "900"
+
+      # The hub takes the LAST report for a given (app, date). On an ephemeral
+      # filesystem a mid-day deploy wipes the ledger and the next report
+      # overwrites the day's real total with whatever accrued since the
+      # restart. The disk at the bottom of this file is what stops that.
+      - key: TRAFFIC_ANALYTICS_FILE
+        value: /var/data/visitor_analytics.json
+
+      # Control-board overrides (/admin/control-board) persist here — on the
+      # same disk, so toggles survive deploys. The boot prints a [visibility]
+      # WARNING when this is missing OR when /var/data is not actually a
+      # mounted disk; the ABSENCE of that warning in the deploy log is the
+      # acceptance check, not the dashboard's Disks tab.
+      - key: PAGE_VISIBILITY_FILE
+        value: /var/data/page_visibility.json
+
+      # ---- the interactive gate (lib/gate_layouts.py) --------------------
+      #
+      # THE per-host gate switch: flip to `auth` and every docs page whose
+      # frontmatter doesn't pin a tier shows the sign-in card to anonymous
+      # browsers. Rollback is flipping it back — env only, no code revert.
+      #
+      # SHIPPING DARK at `public`. Do not flip until this host's own
+      # pre-flight passes: the hub's CLERK_ALLOWED_REDIRECT_ORIGINS must list
+      # modelviewer.2plot.dev, the Clerk dashboard must list it as an allowed
+      # subdomain, and one real sign-in round trip must complete. Missing
+      # either allowlist entry signs users in and strands them on 2plot.ai,
+      # silently. See DEPLOY-READINESS.md.
+      #
+      # The funnel never inherits this: / and /quick-start are pinned public
+      # in run.py, and the corpus pseudo-paths take LLMS_*_TIER below.
+      - key: PAGE_DEFAULT_TIER
+        value: public
+
+      # The second axis, and the later agent flip: while "1", machine surfaces
+      # (the llms.txt family, crawler HTML, the prerender) stay open on auth
+      # pages so the crawl-demand window keeps measuring agents. "0" gates
+      # anonymous machine fetches too (keyed agents still pass). Stays at "1"
+      # here until the network's window closes.
+      - key: LLMS_PUBLIC_DEFAULT
+        value: "1"
+
+      # Access tiers for the tiered corpus documents (/llms-small.txt,
+      # /llms-full.txt). Set explicitly so the knob is visible and so
+      # flipping PAGE_DEFAULT_TIER never gates the corpus as a side effect.
+      - key: LLMS_SMALL_TIER
+        value: public
+      - key: LLMS_FULL_TIER
+        value: public
+
+      # ---- group C: 2plot-clerk-satellite --------------------------------
+      #
+      # All OPTIONAL: absent, the site runs fully public and admin surfaces
+      # fail CLOSED (lib.auth.admin_access_open). Set the two keys to turn
+      # auth on.
+      #
+      # CAUTION, and it is not theoretical: dash-clerk-auth registers a
+      # setuptools entry point, so Dash imports it at construction whether or
+      # not any CLERK_* key is set. A half-installed package (clerk-backend-api
+      # missing) therefore kills the BOOT rather than degrading to public.
+      # requirements.txt pins the tarball and both floors together for exactly
+      # this reason — never install one without the others.
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+
+      # The 2plot.ai PRIMARY on its production Clerk instance (Account Portal
+      # + Frontend API custom domains — not *.accounts.dev).
+      - key: CLERK_SIGN_IN_URL
+        value: https://accounts.2plot.ai/sign-in
+      - key: CLERK_SIGN_UP_URL
+        value: https://accounts.2plot.ai/sign-up
+
+      # THE RETURN TRIP. Unset, buildSatelliteRedirect() returns null, every
+      # sign-in path falls through to the Clerk Account Portal, the hub's
+      # return machinery never runs, and the user authenticates successfully
+      # and STAYS on the primary — no error anywhere.
+      #
+      # A DESTINATION, not a flag: the value is concatenated as
+      # `<value>?returnTo=<here>`, so `true` or a bare host resolves against
+      # THIS site and the button 404s — worse than unset. lib/auth.py warns at
+      # boot for both mistakes; the absence of those warnings is the deploy
+      # acceptance check.
+      - key: CLERK_SATELLITE_SIGN_IN_REDIRECT
+        value: https://2plot.ai/onboarding
+
+      # REQUIRED in satellite mode; a production custom-domain instance cannot
+      # derive it from CLERK_SIGN_IN_URL.
+      - key: CLERK_FRONTEND_API
+        value: https://clerk.2plot.ai
+
+      # The REGISTERED SATELLITE DOMAIN — deliberately NOT the host this app
+      # is served on. Every *.2plot.dev docs host is an ALLOWED SUBDOMAIN of
+      # the 2plot.dev satellite; clerk.modelviewer.2plot.dev is NXDOMAIN and
+      # setting it here hangs sign-in. Session cookies are scoped to
+      # .2plot.dev, which is exactly what the allowlist enables.
+      - key: CLERK_SATELLITE_DOMAIN
+        value: 2plot.dev
+      - key: CLERK_IS_SATELLITE
+        value: "true"
+
+      # Admin allowlist for admin-tier pages and /admin/control-board
+      # (lib.auth.is_admin_user).
+      - key: ADMIN_EMAILS
+        sync: false
+
+      # ---- site-only optional --------------------------------------------
+      #
+      # The Scene Director page (docs/scene-director) degrades to a written
+      # explanation when this is unset — the page is deliberately not a hard
+      # dependency, and the PACKAGE never depends on a model provider.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+    # A DECLARATION ATTACHES NOTHING. The pilot host ran for weeks with this
+    # block present and no disk actually attached: the app mkdir'd /var/data
+    # on the container filesystem and every deploy silently wiped both the
+    # control board AND the analytics ledger. Verify in the dashboard's Disks
+    # tab, or trust the boot guard — a [visibility] warning names exactly
+    # which half is missing, and its absence is the pass.
+    #
+    # Accepted trade-off, fleet-wide: a disk-backed service restarts with a
+    # brief blip on deploy instead of a zero-downtime overlap. Correct for a
+    # docs site, and ~$0.25/mo.
+    disk:
+      name: modelviewer-data
+      mountPath: /var/data
+      sizeGB: 1

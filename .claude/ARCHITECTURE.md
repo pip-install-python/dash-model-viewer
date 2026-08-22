@@ -1,8 +1,10 @@
 # dash-model-viewer 1.0.0 — architecture, verified
 
-Status: **specification**. Nothing in this repo implements it yet.
-Written 2026-08-08 against Dash **4.4.1** (`pip-docs+/.venv`) and
-`@google/model-viewer` **4.3.1** (npm `latest`).
+Status: **built**. Written 2026-08-08 as a specification, against Dash
+**4.4.1** (`pip-docs+/.venv`) and `@google/model-viewer` **4.3.1** (npm
+`latest`); the three layers below shipped in the 1.0.0 rebuild commit and the
+documentation site was written against them. Read it now as the design record
+and the reasoning behind each decision — not as a plan.
 
 Everything below marked ✅ was read out of source or the network today, not
 recalled. Everything marked ⚠️ corrects a claim in

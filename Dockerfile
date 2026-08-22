@@ -16,10 +16,15 @@ RUN pip install --upgrade pip
 # Install core dependencies explicitly (helps with dependency resolution)
 RUN pip install pandas>=1.2.3 plotly>=5.0.0 pydantic>=2.3.0
 
-# No vendor/ directory here: the boilerplate keeps dash_clerk_auth there for
-# its optional-auth page, and this repo has no such page. (The vendored
-# model-viewer bundle is inside the dash_model_viewer package, not here.)
+# vendor/ holds the dash_clerk_auth sdist, which requirements.txt references by
+# relative path (./vendor/dash_clerk_auth-1.0.5.tar.gz) — so it must be present
+# BEFORE the install, not arrive with the later `COPY . .`. It is not on PyPI:
+# the dist/ tarball is the release, admitted only by its recorded sha256.
+#
+# (The vendored model-viewer bundle is a different thing entirely — it lives
+# inside the dash_model_viewer package as package data.)
 COPY requirements.txt .
+COPY vendor/ ./vendor/
 RUN pip install -r requirements.txt
 # markdown2dash pins gunicorn<22, conflicting with the CVE-driven gunicorn>=23
 # in requirements.txt (CVE-2024-6827, CVE-2024-1135 — request smuggling). Its

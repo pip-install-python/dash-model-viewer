@@ -6,10 +6,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing yet. 1.0.0 below is a **draft** — it describes the rebuild currently
-being specified in `.claude/ARCHITECTURE.md`, and none of it has shipped.
+Nothing yet.
 
-## [1.0.0] — unreleased
+## [1.0.0] — 2026-08-21
 
 A clean break. The package is rebuilt around a Dash hook; the old
 `DashModelViewer` component and its generated build are gone. See **Migrating**
