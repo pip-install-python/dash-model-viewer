@@ -27,6 +27,17 @@ isometric cube: three faces, three shades of the brand indigo. It reads at
 
 Both come from the same hexagon, so they cannot drift apart.
 
+WHY NOT scripts/make_favicons.py
+--------------------------------
+The network boilerplate ships `make_favicons.py`, which resamples one source
+PNG into the same eight files. This repo deliberately does NOT carry it: the
+mark here is *generated from geometry*, so there is no source PNG to resample,
+and a second script writing the same eight paths from a different input is how
+the browser icons and the crawler's icons drift apart without anyone noticing —
+they stay byte-identical right up until one is regenerated and the other is not.
+The output layout is the standard one either way, which is all that dimll's
+icon discovery and `configure_seo(icons=[...])` actually care about.
+
 Generated rather than committed-as-binaries because a binary nobody can
 reproduce is the thing that rots. Pillow is a build-time dependency only — see
 `make_social_card.py` for why it stays out of requirements.txt.

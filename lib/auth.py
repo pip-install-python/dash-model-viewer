@@ -265,7 +265,30 @@ def register() -> bool:
         )
 
     if is_satellite and sat_domain:
-        _install_satellite_fixups(sat_domain)
+        _install_satellite_signin_delegation()
+    _install_signout_delegation()
+
+    # The return-trip guard (ported from the leaflet pilot, 2026-08-21).
+    # CLERK_SATELLITE_SIGN_IN_REDIRECT is read by dash-clerk-auth itself, so
+    # nothing here passes it through — but the package accepts a bad value
+    # with only a buried logger.warning, and both failure modes are silent
+    # in the browser: unset strands authenticated users on the primary
+    # (Account Portal fallback), and a truthy non-URL 404s the Sign In
+    # button on THIS host. The absence of both lines below in a deploy log
+    # is the acceptance check for the variable.
+    sat_redirect = (os.getenv("CLERK_SATELLITE_SIGN_IN_REDIRECT") or "").strip()
+    if is_satellite and not sat_redirect:
+        print("[auth] WARNING: Satellite mode with "
+              "CLERK_SATELLITE_SIGN_IN_REDIRECT unset — sign-in will hop to "
+              "the Clerk Account Portal instead of the hub, and users may "
+              "not be returned to this site at all. Set it to "
+              "https://2plot.ai/onboarding (see render.yaml).")
+    elif is_satellite and not sat_redirect.startswith(("http://", "https://")):
+        print(f"[auth] WARNING: CLERK_SATELLITE_SIGN_IN_REDIRECT="
+              f"{sat_redirect!r} is not an absolute http(s) URL. It is a "
+              "DESTINATION, not a flag — the Sign In button will navigate "
+              "to a path on THIS host and 404. Set it to "
+              "https://2plot.ai/onboarding.")
 
     print(
         f"[auth] Clerk ENABLED (headless; satellite={is_satellite}, "
@@ -274,41 +297,56 @@ def register() -> bool:
     return True
 
 
-def _install_satellite_fixups(sat_domain: str) -> None:
-    """Two satellite fixes for dash-clerk-auth, applied via an index hook.
+def _install_satellite_signin_delegation() -> None:
+    """Delegate ``#clerk-login-button`` clicks, for buttons Dash renders LATE.
 
-    1) clerk-js@5 reads ``domain`` as a CONSTRUCTOR option, from the script
-       tag's ``data-clerk-domain`` — NOT as a ``load()`` option. 0.9.0 passed
-       the domain only to ``Clerk.load({domain})``, so the hosted loader
-       built the Clerk singleton with no domain and ``load({isSatellite:true})``
-       threw "a satellite application needs to specify a domain or a proxyUrl".
-       Fix: stamp ``data-clerk-domain`` onto the script tag. This hook runs
-       after the package's, so the tag already exists. The vendored 0.9.1
-       emits the attribute itself; the ``not in index_string`` guard below
-       makes this a no-op there, and it stays for any fork still on 0.9.0.
+    This used to be two hand-rolled satellite fixes for dash-clerk-auth 0.9.0
+    (`_install_satellite_fixups`). Both are upstream now and the local copies
+    are gone — ported back from 2plot_leaflet's auth.py 2026-08-19, whose
+    session retired them first:
 
-    2) The package binds the sign-in button to ``Clerk.openSignIn()`` — a modal
-       on the CURRENT domain. On a satellite that POSTs to the satellite FAPI's
-       ``/sign_ins`` and 403s ("This operation is not allowed on a satellite
-       domain"). Sign-in must redirect to the primary instead. Fix: intercept
-       the ``#clerk-login-button`` click in the CAPTURE phase (it fires before
-       the package's bubble-phase listener, and ``stopImmediatePropagation``
-       prevents it) and call ``redirectToSignIn()``.
+    * stamping ``data-clerk-domain`` onto the ClerkJS script tag (clerk-js@5
+      reads ``domain`` as a CONSTRUCTOR option, not a ``load()`` option) —
+      fixed in **0.9.1**;
+    * replacing ``Clerk.openSignIn()`` on a satellite, which POSTs to the
+      satellite FAPI and 403s with "This operation is not allowed on a
+      satellite domain" — fixed in **0.9.2**, which branches to
+      ``buildSatelliteRedirect()`` / ``redirectToSignIn()`` instead.
 
-       ``signInForceRedirectUrl`` / ``signUpForceRedirectUrl`` point at THIS
-       page so the primary returns the user here. The deprecated ``redirectUrl``
-       prop is ignored by clerk-js@5, so without them the primary falls back to
-       its own default and strands the user on the primary domain. Use
-       origin+pathname with no query, so stale ``__clerk_*`` handshake params
-       are not carried into the next sign-in.
+    What is NOT upstream is *delegation*. The package binds the button by id
+    inside its ``DOMContentLoaded`` handler, once. The header control exists
+    by then (``components.header``, part of the app shell) and works. Any
+    button Dash renders later — a sign-in affordance inside a page layout —
+    would have no listener at all. One delegated CAPTURE-phase listener
+    catches the button however late it appears; ``stopImmediatePropagation``
+    means exactly one handler runs even on the header button, where the
+    package's own listener is also attached — deterministic rather than
+    order-dependent. (The gate card's own buttons are ``#auth-gate-*``,
+    handled by ``assets/auth_gate.js`` — disjoint selectors, same
+    destinations.)
+
+    The action defers to the package: ``buildSatelliteRedirect()`` (the 0.9.2
+    page-JS surface, which carries the current page in ``?returnTo=``) when
+    available, else ``redirectToSignIn`` with THIS page forced as the return.
+    The fallback uses origin+pathname, not ``href`` — stale ``__clerk_*``
+    handshake params must not ride into the next sign-in.
     """
     from dash import hooks as _dash_hooks
 
+    # Unique marker: the guard below keys off it so a second registration (or
+    # a future second index hook) cannot inject this script twice.
+    marker = "ddb-clerk-signin-delegate"
+
     signin_js = (
-        "<script>(function(){"
+        f"<script data-{marker}>(function(){{"
         "document.addEventListener('click',function(e){"
         "var b=e.target&&e.target.closest?e.target.closest('#clerk-login-button'):null;"
-        "if(b&&window.Clerk&&typeof window.Clerk.redirectToSignIn==='function'){"
+        "if(!b||!window.Clerk)return;"
+        "var dca=window.dashClerkAuth;"
+        "var dest=dca&&dca.buildSatelliteRedirect?dca.buildSatelliteRedirect():null;"
+        "if(dest){e.stopImmediatePropagation();e.preventDefault();"
+        "window.location.assign(dest);return;}"
+        "if(typeof window.Clerk.redirectToSignIn==='function'){"
         "e.stopImmediatePropagation();e.preventDefault();"
         "var u=window.location.origin+window.location.pathname;"
         "window.Clerk.redirectToSignIn({signInForceRedirectUrl:u,signUpForceRedirectUrl:u});}"
@@ -316,14 +354,62 @@ def _install_satellite_fixups(sat_domain: str) -> None:
     )
 
     @_dash_hooks.index()
-    def _clerk_satellite_fixups(index_string):
-        needle = "data-clerk-publishable-key="
-        if needle in index_string and "data-clerk-domain=" not in index_string:
-            index_string = index_string.replace(
-                needle, f'data-clerk-domain="{sat_domain}" {needle}', 1
-            )
-        if "redirectToSignIn" not in index_string and "</body>" in index_string:
+    def _clerk_satellite_signin(index_string):
+        if marker not in index_string and "</body>" in index_string:
             index_string = index_string.replace("</body>", signin_js + "</body>", 1)
+        return index_string
+
+
+def _install_signout_delegation() -> None:
+    """Make Sign Out actually revoke the SERVER's idea of who you are.
+
+    dash-clerk-auth 1.0.2's logout handler runs ``window.Clerk.signOut()``
+    and reloads — client-side only. The server keeps trusting the signed
+    ``__dca_identity`` cookie (and the Flask session) it minted at sign-in
+    for the rest of ``session_lifetime_days`` (default **7 days**): a
+    signed-out browser still renders every auth-gated page. The package
+    ships the endpoint that fixes this — ``POST /api/auth/signout`` clears
+    the session and the identity cookie — but nothing ever calls it.
+
+    This capture-phase delegate owns the click (``stopImmediatePropagation``,
+    the sign-in delegation's proven pattern) and sequences what the package
+    should have: Clerk sign-out FIRST (kills ``__session``, so the slow path
+    cannot re-verify and re-mint identity), then the server signout (kills
+    the Flask session + ``__dca_identity``), then the reload — awaited, so
+    the reload can never race the cookie clears. Every failure still ends in
+    a reload, and the server POST runs even when ClerkJS never loaded —
+    which is exactly the stale-ghost case that needs it most.
+
+    The upstream fix SHIPPED in dash-clerk-auth 1.0.3 (click paths +
+    cross-tab transition) and 1.0.4 (the fresh-load ghost reconciliation),
+    and this repo vendors >=1.0.4 — so today this delegate is a harmless,
+    deliberate duplicate POST. It is retained until the fleet-wide
+    shim-retirement pass: one clean release cycle after every host runs
+    >=1.0.4 in production (see requirements.txt's provenance block).
+    """
+    from dash import hooks as _dash_hooks
+
+    marker = "ddb-clerk-signout-delegate"
+
+    signout_js = (
+        f"<script data-{marker}>(function(){{"
+        "document.addEventListener('click',function(e){"
+        "var b=e.target&&e.target.closest?e.target.closest('#clerk-logout-menu-item'):null;"
+        "if(!b)return;"
+        "e.stopImmediatePropagation();e.preventDefault();"
+        "var done=function(){window.location.reload();};"
+        "var server=function(){return fetch('/api/auth/signout',"
+        "{method:'POST',credentials:'same-origin'}).catch(function(){});};"
+        "var clerk=(window.Clerk&&typeof window.Clerk.signOut==='function')"
+        "?window.Clerk.signOut().catch(function(){}):Promise.resolve();"
+        "clerk.then(server).then(done,done);"
+        "},true);})();</script>"
+    )
+
+    @_dash_hooks.index()
+    def _clerk_signout(index_string):
+        if marker not in index_string and "</body>" in index_string:
+            index_string = index_string.replace("</body>", signout_js + "</body>", 1)
         return index_string
 
 

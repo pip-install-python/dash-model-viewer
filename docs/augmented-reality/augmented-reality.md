@@ -4,6 +4,7 @@ description: Place a model in a real room — and the default that silently disa
 endpoint: /augmented-reality
 package: dash_model_viewer
 icon: mdi:augmented-reality
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Augmented Reality

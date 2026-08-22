@@ -125,34 +125,9 @@ def create_content(data):
                     ]
                 ),
 
-                # External Resources Section
-                dmc.Divider(mt="md", mb="sm"),
-                create_nav_section(
-                    "Resources",
-                    [
-                        create_nav_link(
-                            "fluent-mdl2:forum",
-                            "Dash Community",
-                            "https://community.plotly.com/",
-                            external=True
-                        ),
-                        create_nav_link(
-                            "ic:baseline-design-services",
-                            "DMC",
-                            "https://www.dash-mantine-components.com/",
-                            external=True
-                        ),
-                        # 2plot.dev, NOT pip-install-python.com — the package
-                        # index is the network host, and that domain is not a
-                        # link this app publishes.
-                        create_nav_link(
-                            "mdi:package-variant-closed",
-                            "2plot.dev",
-                            "https://2plot.dev",
-                            external=True
-                        ),
-                    ]
-                ),
+                # Own-work before third-party: the owner's other apps rank
+                # above the external Resources list, and Resources sits LAST —
+                # it is the only section that navigates away from the network.
                 dmc.Divider(mt="md", mb="sm"),
                 create_nav_section(
                     "Other Apps I've built",
@@ -181,7 +156,36 @@ def create_content(data):
                             "https://piratesbargain.com",
                             external=True
                         ),
-                        ]
+                    ]
+                ),
+
+                # External Resources Section — deliberately the last section.
+                dmc.Divider(mt="md", mb="sm"),
+                create_nav_section(
+                    "Resources",
+                    [
+                        create_nav_link(
+                            "fluent-mdl2:forum",
+                            "Dash Community",
+                            "https://community.plotly.com/",
+                            external=True
+                        ),
+                        create_nav_link(
+                            "ic:baseline-design-services",
+                            "DMC",
+                            "https://www.dash-mantine-components.com/",
+                            external=True
+                        ),
+                        # 2plot.dev, NOT pip-install-python.com — the package
+                        # index is the network host, and that domain is not a
+                        # link this app publishes.
+                        create_nav_link(
+                            "mdi:package-variant-closed",
+                            "2plot.dev",
+                            "https://2plot.dev",
+                            external=True
+                        ),
+                    ]
                 )
             ],
             gap="xs",

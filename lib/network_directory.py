@@ -41,9 +41,12 @@ from typing import Any, Dict, List
 
 # Only list hosts that are actually live. A directory entry pointing at a
 # subdomain with no site is a dead link an agent will follow once and then
-# distrust the rest of the list for. muicharts.2plot.dev and
-# flexlayout.2plot.dev have no docs site yet — add them in the same change
-# that ships them, not before.
+# distrust the rest of the list for. The full docs fleet went live on paid
+# hosting 2026-08-19/20 — muicharts, flexlayout and llms joined in that
+# window (the drift sweep of 2026-08-20 found seven different versions of
+# this list across nine repos; this copy is the canonical one and the fleet
+# syncs FROM here, verbatim). Still deliberately absent until they deploy:
+# excalidraw.2plot.dev and modelviewer.2plot.dev.
 PEERS: List[Dict[str, str]] = [
     {
         "name": "2plot.ai",
@@ -71,6 +74,21 @@ PEERS: List[Dict[str, str]] = [
         "description": "MUI X Scheduler — calendars and event scheduling for Dash.",
     },
     {
+        "name": "dash-mui-charts",
+        "url": "https://muicharts.2plot.dev",
+        "description": "MUI X charts, tree views and time pickers for Dash.",
+    },
+    {
+        "name": "flexlayout-dash",
+        "url": "https://flexlayout.2plot.dev",
+        "description": "IDE-style dockable, resizable and floatable window panels.",
+    },
+    {
+        "name": "dash-improve-my-llms",
+        "url": "https://llms.2plot.dev",
+        "description": "The AI/LLM and SEO package every site in this network is built on.",
+    },
+    {
         "name": "dash-flows",
         "url": "https://flows.2plot.dev",
         "description": "Node-graph editors built on React Flow.",
@@ -92,12 +110,12 @@ PEERS: List[Dict[str, str]] = [
     },
 ]
 
+# pip-install-python.com is deliberately NOT here: the domain is retired
+# network-wide (the fleet's retire-pip-install-python-domain sweep), and
+# leaflet's test_social_card pins its absence. A directory that keeps
+# pointing agents at a retired origin re-teaches them the identity the
+# network spent a release unlearning.
 AFFILIATED: List[Dict[str, str]] = [
-    {
-        "name": "Pip Install Python",
-        "url": "https://pip-install-python.com",
-        "description": "The original component documentation site.",
-    },
     {
         "name": "Pirate's Bargain",
         "url": "https://piratesbargain.com",

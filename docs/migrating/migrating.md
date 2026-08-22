@@ -4,6 +4,7 @@ description: A prop-by-prop map from the 0.0.1 API to 1.0.0, and an honest accou
 endpoint: /migrating
 package: dash_model_viewer
 icon: mdi:transfer-right
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Migrating from 0.0.1

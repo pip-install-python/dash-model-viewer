@@ -5,6 +5,7 @@ endpoint: /benchmark
 package: dash_model_viewer
 category: Advanced
 icon: mdi:chart-box-outline
+lastmod: 2026-08-09
 ---
 
 .. llms_copy::Benchmark

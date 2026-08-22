@@ -237,6 +237,24 @@ div .m_46b77525 {
     margin-top: 15px;
 }
 
+/* Rank the AppShell sections: the aside under the header, always.
+   The Clerk avatar dropdown renders INSIDE the header, so no z-index on the
+   menu itself (it ships with 10000 inline) can lift it above anything that
+   outranks the header's own stacking context — and Mantine gives the aside
+   calc(shell + 1), later in the DOM, so the open menu painted underneath
+   the Table of Contents.
+
+   Overriding --app-shell-aside-z-index on the shell root does NOT work:
+   Mantine stamps that variable INLINE on the <aside> element itself, and an
+   element's own inline declaration beats anything inherited. The inline
+   style only carries the variable though — the z-index PROPERTY comes from
+   the stylesheet — so overriding the property on the section wins. Static
+   selector per the DMC Styles API guidance (never the hashed m_* classes).
+   10 keeps the aside above page content and below every piece of chrome. */
+aside.mantine-AppShell-aside {
+    z-index: 10 !important;
+}
+
 :root[data-mantine-color-scheme="dark"] {
     --mantine-color-anchor: #74c0fc !important;
     --mantine-color-dark-light: rgba(63, 63, 70, 0.15);

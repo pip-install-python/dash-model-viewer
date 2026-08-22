@@ -4,6 +4,7 @@ description: Describe a shot in plain language and let Claude stage it — groun
 endpoint: /scene-director
 package: dash_model_viewer
 icon: mdi:movie-open-outline
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Scene Director

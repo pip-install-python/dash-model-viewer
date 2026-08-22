@@ -7,6 +7,7 @@ from dash import dcc, register_page
 import dash_model_viewer as dmv
 from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, SITE_DESCRIPTION
 from lib.demo_models import ASTRONAUT
+from lib.versions import substitute_versions
 
 register_page(
     __name__,
@@ -27,8 +28,15 @@ md_file = Path("pages") / "home.md"
 post = frontmatter.loads(md_file.read_text())
 metadata, content = post.metadata, post.content
 
-# Module-level LLMS_DOC — dash-improve-my-llms 2.0 picks this up automatically
-# and serves it verbatim at /llms.txt. No layout walking, no extraction.
+# Same {{VERSION:<distribution>}} substitution pages/markdown.py applies to the
+# docs. The home page is the most-read surface in the network (it IS /llms.txt),
+# so any version number on it must come from the installed distribution rather
+# than from prose — the fleet shipped "Powered by 2.3.4" for months while a
+# newer package was actually serving the site.
+content = substitute_versions(content, source=str(md_file))
+
+# Module-level LLMS_DOC — dash-improve-my-llms picks this up automatically and
+# serves it as the opening prose of /llms.txt. No layout walking, no extraction.
 LLMS_DOC = content
 
 # The hero is the product. A documentation site for a 3D component whose front

@@ -4,6 +4,7 @@ description: Describe a sculpture and get a real .glb — with Claude as a scene
 endpoint: /generative-3d
 package: dash_model_viewer
 icon: mdi:shape-plus-outline
+lastmod: 2026-08-09
 ---
 
 .. llms_copy::Generative 3D Art

@@ -4,6 +4,7 @@ description: The camera, load state, model dimensions, AR status and hotspot cli
 endpoint: /events-and-callbacks
 package: dash_model_viewer
 icon: mdi:transit-connection-variant
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Events and Callbacks

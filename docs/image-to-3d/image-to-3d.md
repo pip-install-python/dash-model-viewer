@@ -4,6 +4,7 @@ description: Upload a picture and get a real .glb — Claude reads the image and
 endpoint: /image-to-3d
 package: dash_model_viewer
 icon: mdi:image-filter-hdr-outline
+lastmod: 2026-08-09
 ---
 
 .. llms_copy::Image to 3D

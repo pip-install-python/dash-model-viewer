@@ -4,6 +4,7 @@ description: Camera presets, flight between them, and the 230-line clientside ex
 endpoint: /camera-and-views
 package: dash_model_viewer
 icon: mdi:camera-control
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Camera and Views

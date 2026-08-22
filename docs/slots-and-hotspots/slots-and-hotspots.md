@@ -4,6 +4,7 @@ description: Anchor any Dash component to a point on the model — and why hotsp
 endpoint: /slots-and-hotspots
 package: dash_model_viewer
 icon: mdi:map-marker-radius-outline
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Slots and Hotspots

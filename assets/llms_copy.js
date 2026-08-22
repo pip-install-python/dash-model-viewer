@@ -47,6 +47,33 @@ document.addEventListener('DOMContentLoaded', function () {
         return p.endsWith('/') ? p.slice(0, -1) : p;
     }
 
+    /**
+     * The signed-in visitor's agent key, or "" when anonymous.
+     *
+     * These URLs get pasted into Claude or ChatGPT, which fetch them with no
+     * cookie — so a gated document needs its authority in the URL or the
+     * agent gets the gate page instead of the docs. /api/agent-key
+     * (lib/agent_key.py) returns the key bound to the current Clerk session
+     * (204 when signed out), which is why the key is never embedded in the
+     * page HTML: nothing can cache it and hand it to the next visitor.
+     *
+     * Fetched lazily on the first click and remembered for the page view —
+     * every call is a hub round trip, so never fetch on render. Any failure
+     * falls through to the plain URL: copying something that works for
+     * public pages beats copying nothing.
+     */
+    let agentKeyPromise = null;
+
+    function getAgentKey() {
+        if (agentKeyPromise === null) {
+            agentKeyPromise = fetch('/api/agent-key', { credentials: 'same-origin' })
+                .then((r) => (r.status === 200 ? r.json() : null))
+                .then((data) => (data && data.key) || '')
+                .catch(() => '');
+        }
+        return agentKeyPromise;
+    }
+
     function flashButton(button, originalText, message, color) {
         button.textContent = message;
         button.style.color = color;
@@ -70,7 +97,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 e.stopPropagation();
 
                 try {
-                    const url = `${window.location.origin}${cleanPagePath()}/llms.txt`;
+                    // Carry the agent key when signed in so the pasted link
+                    // works in an assistant that has no session.
+                    const agentKey = await getAgentKey();
+                    const url = `${window.location.origin}${cleanPagePath()}/llms.txt`
+                        + (agentKey ? `?key=${encodeURIComponent(agentKey)}` : '');
                     const ok = await copyToClipboard(url);
                     const original = button.textContent;
                     if (ok) {

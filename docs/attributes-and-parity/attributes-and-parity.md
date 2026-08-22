@@ -4,6 +4,7 @@ description: Reach every model-viewer attribute — including ones added upstrea
 endpoint: /attributes-and-parity
 package: dash_model_viewer
 icon: mdi:tune-variant
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Attributes and Parity

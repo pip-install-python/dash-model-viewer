@@ -4,6 +4,7 @@ description: Every prop on ModelViewer and Slot, every event payload, and the pr
 endpoint: /api-reference
 package: dash_model_viewer
 icon: mdi:code-braces
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::API Reference

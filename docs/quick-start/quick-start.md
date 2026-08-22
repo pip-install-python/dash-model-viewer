@@ -4,6 +4,7 @@ description: Install the package, put a 3D model on the page, and understand wha
 endpoint: /quick-start
 package: dash_model_viewer
 icon: mdi:cube-outline
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Quick Start

@@ -4,6 +4,7 @@ description: Swap the model at runtime, and drive GLTF material variants from a 
 endpoint: /model-switching
 package: dash_model_viewer
 icon: mdi:swap-horizontal
+lastmod: 2026-08-08
 ---
 
 .. llms_copy::Model Switching and Variants
