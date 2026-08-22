@@ -74,6 +74,26 @@ def _requirement_names() -> set[str]:
 # This is an exemption that has to be EARNED, not asserted: the test below
 # checks that every install path actually carries the extra command. An
 # exemption nobody verifies is just a hole with a comment over it.
+# The optional backends. DASH_BACKEND picks ONE at boot (flask by default);
+# the other two are never imported, so their packages are not installed and
+# must not be required. requirements.txt carries them as COMMENTED lines —
+# deliberately visible, deliberately off.
+#
+# `starlette` has no line of its own because it arrives with fastapi.
+#
+# This exemption is narrower than it looks, and the tests below hold it to
+# that: a module here is exempt from being DECLARED, not from being GATED.
+# Two files import fastapi/starlette at module level; they are safe only
+# because run.py imports THEM from inside `if BACKEND == "fastapi"`. Move
+# either import to run.py's top level and every Flask deploy dies on boot —
+# which is the Pillow failure again, wearing a different module name.
+OPTIONAL_BACKENDS = {
+    "fastapi": "fastapi",
+    "starlette": "fastapi",   # transitive
+    "quart": "quart",
+}
+
+
 OUT_OF_BAND = {
     "markdown2dash": (
         "Dockerfile",
@@ -131,7 +151,7 @@ def test_every_runtime_third_party_import_is_in_requirements():
             continue
         if dists & declared:
             continue
-        if module in OUT_OF_BAND:
+        if module in OUT_OF_BAND or module in OPTIONAL_BACKENDS:
             continue
         missing.append(
             f"  `import {module}` (provided by "
@@ -193,4 +213,59 @@ def test_out_of_band_installs_reach_every_path(module, install_paths):
             f"{rel} does not install {module} with --no-deps. It is exempt "
             f"from requirements.txt, so this is the only thing putting it in "
             f"that environment."
+        )
+
+
+@pytest.mark.parametrize("module,installer", sorted(OPTIONAL_BACKENDS.items()))
+def test_optional_backends_are_documented_in_requirements(module, installer):
+    """Exempt from being required, not from being written down.
+
+    An optional dependency that appears nowhere in requirements.txt is
+    indistinguishable from a forgotten one. Each must appear as a commented
+    line naming the distribution that installs it, so the file still answers
+    "what does the fastapi backend need" without reading the code.
+    """
+    text = (REPO / "requirements.txt").read_text()
+    assert re.search(rf"^#\s*{re.escape(installer)}\b", text, re.M), (
+        f"{installer} is not documented as a commented optional line in "
+        f"requirements.txt, but lib/ imports `{module}`."
+    )
+
+
+def test_optional_backend_imports_never_reach_the_default_boot():
+    """The gate that makes the exemption above safe.
+
+    lib/asgi_routes.py and lib/asgi_middleware.py import fastapi/starlette at
+    module level and are perfectly correct — because run.py only imports them
+    inside `if BACKEND == "fastapi"`. A top-level (column-zero) import of
+    either in run.py would make every Flask deploy fail to boot on a package
+    that requirements.txt deliberately does not install.
+    """
+    offenders = [
+        f"{path.name} imports {module} at module level"
+        for path in sorted((REPO / "lib").glob("*.py"))
+        for module in OPTIONAL_BACKENDS
+        if re.search(rf"^(from|import) {module}\b", path.read_text(), re.M)
+    ]
+    assert offenders, (
+        "Expected at least one module-level optional-backend import — if "
+        "these moved, this test is now checking nothing and should be "
+        "rewritten against wherever they went."
+    )
+
+    gated_modules = {
+        path.stem
+        for path in sorted((REPO / "lib").glob("*.py"))
+        for module in OPTIONAL_BACKENDS
+        if re.search(rf"^(from|import) {module}\b", path.read_text(), re.M)
+    }
+
+    run_py = (REPO / "run.py").read_text()
+    for stem in sorted(gated_modules):
+        top_level = re.search(rf"^from lib\.{stem} import", run_py, re.M)
+        assert not top_level, (
+            f"run.py imports lib.{stem} at the TOP LEVEL. That module imports "
+            f"an optional backend package which requirements.txt does not "
+            f"install, so every default (flask) deploy would fail to boot. "
+            f"Keep it inside the `if BACKEND == ...` branch."
         )
