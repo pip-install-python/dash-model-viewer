@@ -1,2 +1,145 @@
-# dash is required to call `build:py`
-dash[dev]>=2.0.0
+# Requirements for the DOCUMENTATION SITE (modelviewer.2plot.dev).
+#
+# This is NOT the package's dependency set — see pyproject.toml for that.
+# Shipping requirements.txt as package deps is one of the four ways a docs
+# site leaks into a wheel (.subdomains/PACKAGING.md).
+#
+# The package itself is installed from this checkout, separately:
+#     pip install -r requirements.txt
+#     pip install --no-deps markdown2dash==0.1.2
+#     pip install .
+# so the site always documents the code in this repo rather than whatever
+# version happens to be on PyPI. That is what makes docs/ a regression test.
+
+# --- test / lint tooling (the package suite needs only pytest + dash) ---
+pytest>=8.0
+flake8>=6.0
+
+# --- the Scene Director page (docs/scene-director) ---
+# SITE ONLY. The package must never depend on a model provider: someone running
+# `pip install dash-model-viewer` is getting a 3D component, not an LLM client.
+# The page degrades to an explanation when ANTHROPIC_API_KEY is unset.
+anthropic>=0.60
+
+# Core scientific stack
+pandas>=1.2.3
+plotly>=5.0.0
+requests>=2.27.1
+retrying
+setuptools
+typing-extensions>=4.1.1
+nest-asyncio
+importlib-metadata
+
+# Core Dash 4.x (pluggable backends, MCP, websocket callbacks)
+# Flask is included by default. For other backends, install the extras below.
+#
+# Verified support matrix (dash-hook-my-ai `scripts/matrix.py` — real apps on
+# each backend, with stock-Dash reproduction of the failure):
+#
+#   Dash    Flask   FastAPI                       Quart
+#   4.1.0   ok      n/a (no pluggable backends)   n/a
+#   4.2.0   ok      ok                            ok
+#   4.3.0   ok      BROKEN — every non-root 500s  ok
+#   4.4.0   ok      ok                            ok
+#   4.4.1   ok      ok                            ok
+#
+# 4.3.0 added an early-return path guard to the ASGI middleware that returns
+# before `set_current_request`, while the page catch-all still calls
+# `get_current_request()` — so it raises. The catch-all is byte-identical
+# between 4.2.0 and 4.3.0; only the middleware changed. 4.4.0 fixed it by
+# setting the context inside the catch-all as well, which is belt-and-braces:
+# a future middleware guard cannot reintroduce it. That is why 4.4.x is not
+# merely "currently passing" but structurally safer than 4.2.0, which works
+# only because a single upstream code path happens to cover it.
+#
+# `~=4.4.1` lets 4.4.2 patches flow without twenty pull requests, but blocks
+# 4.5.0 so a minor bump goes through the matrix deliberately.
+#
+# Pinned for the most constrained backend network-wide, INCLUDING the Flask
+# apps: DASH_BACKEND is an environment variable and this repo is a shared
+# template, so a Flask deployment becomes a FastAPI deployment with one env
+# change and no code change. A Flask-only pin would encode an assumption that
+# a single deploy setting can invalidate.
+dash~=4.4.1
+dash-iconify>=0.1.2
+dash-mantine-components>=2.7.0
+dash-ag-grid
+
+# Default backend (Flask is bundled but pinned here for clarity)
+flask>=3.0.0
+
+# Optional backends (uncomment / install to use):
+#   pip install "dash[fastapi]"   -> FastAPI backend (async, websockets, MCP-friendly)
+#   pip install "dash[quart]"     -> Quart backend (async Flask-compatible API)
+# fastapi>=0.110.0
+# quart>=0.19.0
+
+# Documentation & Utilities
+python-frontmatter>=1.0.0
+# markdown2dash 0.1.2 declares `gunicorn>=21.2.0,<22.0.0` — a markdown parser
+# pinning a WSGI server, and directly against the CVE-driven gunicorn>=23
+# floor below. pip cannot resolve both, so markdown2dash is installed on its
+# own line WITHOUT its dependency graph:
+#
+#     pip install -r requirements.txt
+#     pip install --no-deps markdown2dash==0.1.2
+#
+# scripts/dev.sh, the Dockerfile, render.yaml and CI all do exactly that pair.
+# Its real runtime dependencies are listed here instead (dash, dash-iconify
+# and dash-mantine-components are already pinned above):
+docutils!=0.21
+jsonpath
+mistune
+pydantic>=2.3.0
+python-dotenv>=1.0.0
+
+# AI/LLM Integration & SEO
+#
+# Installed from PyPI. There is no vendored copy of this package in this repo
+# any more — `vendor/` holds `dash_clerk_auth` alone. (2.1.0 and 2.3.1 were
+# assigned during that package's development and never published.)
+#
+# 2.3.4 is the network standard: 2plot.ai and 2plot.dev both run it, and it
+# is what makes the site-identity work below actually reach the surfaces. Its
+# `resolve_site_title` picks the /llms.txt H1 and the llms-viewer brand chip
+# from the home page's registered `name`, falling through generic nav labels
+# ("Home", "Index", and Dash's default title "Dash") instead of publishing
+# them as the site's identity. On a pre-2.3.4 artifact the viewer chip on this
+# host reads a bare "Dash" — that is the fingerprint of a stale build.
+#
+# What the 2.3.x line changes, on this app specifically: `register_page_metadata` merges
+# instead of assigning (no prose can be erased by a later bookkeeping call),
+# the prerender reaches every visitor rather than only recognised crawlers,
+# the Markdown renderer emits real anchors / code fences / tables / rules
+# instead of literal text, and `register_network` publishes the cross-host
+# directory that lib/network_directory.py feeds it. A page's llms.txt opens
+# with a nav block pointing back at the site index and the network, and the
+# same URL content-negotiates — agents get the Markdown byte for byte,
+# browsers get it rendered behind a header carrying the network wordmark.
+#
+# The robots.txt crawler split doubles as the artifact fingerprint — pip
+# metadata is not visible from outside. 2.3.2 allows OAI-SearchBot (ChatGPT
+# search's crawler); 2.3.3 moves ClaudeBot (the actual *training* crawler) to
+# Disallow while allowing the user-triggered and search fetchers Claude-User
+# and Claude-SearchBot, and strips unexpanded directive lines from prose.
+# tests/test_llms_routes.py asserts that split, and scripts/network_smoke.py
+# asserts it against a live host, so a stale artifact fails a battery by name
+# rather than serving quietly.
+dash-improve-my-llms[flask]>=2.3.4
+# dash-improve-my-llms[fastapi]>=2.3.4   # Dash 4.4+ FastAPI backend
+# dash-improve-my-llms[quart]>=2.3.4     # Dash 4.4+ Quart backend
+# dash-improve-my-llms[all]>=2.3.4       # all three
+
+# Production Servers
+# - gunicorn   -> WSGI (Flask)
+# - uvicorn    -> ASGI (FastAPI / Quart)
+#
+# gunicorn fronts every Flask deployment in this network, so the floor is the
+# network's security baseline, not a convenience: 21.x carried two HTTP
+# request-smuggling CVEs (CVE-2024-6827, CVE-2024-1135), both fixed by 23.0.
+# CI asserts the installed version inside the built image — a transitive pin
+# (markdown2dash asks for gunicorn<22) must never be allowed to drag the
+# production server back under the floor without failing the build.
+gunicorn>=23.0.0
+# uvicorn[standard]>=0.27.0

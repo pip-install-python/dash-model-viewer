@@ -278,3 +278,19 @@ GitHub.sublime-settings
 # Julia manifest file names
 Manifest.toml
 JuliaManifest.toml
+
+### dash-model-viewer
+# PyCharm project files — machine-specific, and the parent checkout has been
+# burned by these before.
+.idea/
+# Claude Code scratch state (the .md design docs in .claude/ ARE tracked).
+.claude/.cc-writes/
+# Runtime analytics ledger — written by lib/analytics_tracker.py at runtime.
+# On Render this lives on the mounted disk (TRAFFIC_ANALYTICS_FILE); locally it
+# lands here. Committing it publishes visitor data and guarantees merge
+# conflicts on every deploy.
+visitor_analytics.json
+visitor_analytics.json.lock
+page_visibility.json
+# JetBrains Junie assistant scratch state — machine-specific, like .idea/.
+.junie/

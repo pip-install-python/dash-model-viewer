@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "8550:8550"
+    networks:
+      - monitoring_network
+
+networks:
+  monitoring_network:
+    driver: bridge

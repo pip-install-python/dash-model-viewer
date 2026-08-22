@@ -1,0 +1,101 @@
+# Render Blueprint for modelviewer.2plot.dev
+#
+# Applies to a new service with `render blueprint launch`. Values marked
+# sync:false are per-deployment and must be set in the Render dashboard.
+#
+# THIS RUNS ON THE FREE PLAN. Three consequences, all of which are worked
+# around below rather than discovered in production:
+#
+#   1. No persistent disks. The `disk:` block and TRAFFIC_ANALYTICS_FILE that
+#      the boilerplate uses to survive a mid-day deploy are removed. The
+#      analytics ledger is therefore ephemeral: a deploy resets the day's
+#      counters and the next hourly rollup reports only what accrued since.
+#      Accepted, and stated here so nobody debugs it as a bug.
+#   2. The instance spins down after ~15 minutes idle, and a cold start takes
+#      tens of seconds. Every live check must wake-and-retry before asserting
+#      (scripts/smoke_live.py does; LESSONS.md §21).
+#   3. 512 MB RAM, shared CPU. One worker, not two — see startCommand.
+services:
+  - type: web
+    name: modelviewer-2plot-dev
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    # Two commands, not one: markdown2dash 0.1.2 declares gunicorn<22 against
+    # the CVE-driven gunicorn>=23 floor in requirements.txt, so it is installed
+    # without its dependency graph. Same pair as the Dockerfile and CI.
+    #
+    # `pip install .` puts dash-model-viewer itself in the image from this
+    # checkout — the site documents the version in this repo, not the version
+    # that happens to be on PyPI. That is what makes the docs a regression test
+    # for the package rather than a description of it.
+    buildCommand: pip install -r requirements.txt && pip install --no-deps markdown2dash==0.1.2 && pip install .
+    # One worker. Two 512 MB-shared workers each importing pandas, plotly and
+    # dash-mantine-components is how a free instance gets OOM-killed mid-deploy
+    # and Render reports it as a failed health check.
+    startCommand: gunicorn run:server -b 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /healthz
+    domains:
+      - modelviewer.2plot.dev
+    envVars:
+      # THE value to get right. It drives <link rel="canonical">, sitemap.xml
+      # and the absolute URLs in llms.txt. A fork that leaves this unset
+      # inherits the boilerplate's own domain and tells Google it is a
+      # duplicate — so lib/constants.py refuses to boot on Render without it.
+      - key: APP_BASE_URL
+        value: https://modelviewer.2plot.dev
+
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+
+      # flask | fastapi | quart. FastAPI and Quart need the matching dash
+      # extra installed and an ASGI start command (uvicorn), so switching this
+      # alone is not enough.
+      - key: DASH_BACKEND
+        value: flask
+
+      # Dash 4.3+ MCP server. Off by default: it is a live introspection
+      # surface on a public host.
+      - key: DASH_MCP_ENABLED
+        value: "0"
+
+      # Network analytics — the hourly signed rollup POSTed to 2plot.ai.
+      # Without the secret, reporting is off and the app says so at startup.
+      - key: CROSS_APP_WEBHOOK_SECRET
+        sync: false
+
+      # ONE short app id, everywhere. Directory key = subdomain slug.
+      # Also the bulletin's identity to the hub (lib/bulletin.py).
+      - key: SATELLITE_APP_KEY
+        value: modelviewer
+
+      # This app's identity to the 2plot.dev ad network (lib/ad_client.py).
+      # Deliberately the SAME short key as SATELLITE_APP_KEY, so
+      # /admin/ad-board, /traffic and the bulletin all name this app
+      # identically.
+      - key: AD_APP_ID
+        value: modelviewer
+
+      # Hub-published tips and announcements in the llms.txt viewer header.
+      #
+      # Blueprint envVars apply on Blueprint SYNC, not on git-push autodeploys
+      # (LESSONS.md §10). If the viewer header shows one generic tip where the
+      # hub publishes more, this is unwired — set it on the SERVICE too.
+      - key: NETWORK_BULLETIN_URL
+        value: https://2plot.dev/api/network/bulletin
+
+      # Behind Cloudflare the country header is already present, so the
+      # ip-api.com lookup is redundant latency.
+      - key: ANALYTICS_GEO_LOOKUP
+        value: "0"
+
+# NOTE: no `disk:` block — the free plan does not support persistent disks.
+# On a paid plan, re-add the boilerplate's:
+#
+#     - key: TRAFFIC_ANALYTICS_FILE
+#       value: /var/data/visitor_analytics.json
+#     disk:
+#       name: analytics
+#       mountPath: /var/data
+#       sizeGB: 1

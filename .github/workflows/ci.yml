@@ -1,0 +1,367 @@
+# CI for modelviewer.2plot.dev (docs site) and the dash-model-viewer package.
+# Copied from dash-documentation-boilerplate; keep its comments — they are
+# the guardrail, not decoration.
+#
+# This repo is the one the other documentation sites are forked from, so the
+# shape of this file is part of the deliverable. It implements the network's
+# CI baseline (2plot.ai and 2plot.dev run the same one):
+#
+#   * least-privilege `permissions` and a cancel-in-progress `concurrency`
+#     group, so a workflow cannot write more than it reads and a rapid second
+#     push does not race the first;
+#   * an explicit `timeout-minutes` on every job — the default is six hours,
+#     which is how a hung `curl` burns a day of runner minutes unnoticed;
+#   * the real Docker image, built with a buildx GHA cache, then BOOTED, then
+#     probed by the same battery that runs against production;
+#   * version fingerprints asserted INSIDE the image, because pip metadata is
+#     invisible from the outside and a stale artifact serves quietly;
+#   * a secretless in-process pytest suite — no CLERK_*, no
+#     CROSS_APP_WEBHOOK_SECRET — because the fail-closed behaviour is only
+#     provable when nothing is configured;
+#   * an advisory pip-audit.
+#
+# A fork changes the matrix and the image name. Everything else is the
+# standard; see docs/network-standard.
+
+name: CI
+
+# Deliberately NOT `push: branches: [main]`. cd.yml runs on that push and its
+# first job `uses:` this workflow, so a push to main used to start two runs of
+# it — which then contended for the `ci-${{ github.ref }}` concurrency group
+# below and cancelled each other. The work still got done (whichever run
+# survived did all of it), but every push left a `cancelled` CI run sitting
+# next to the green CD one, which reads as a failure at a glance.
+#
+# So: pull requests get their own CI, and `main` is owned by CD. There is no
+# coverage gap — CD cannot deploy without this workflow passing first.
+on:
+  pull_request:
+  workflow_dispatch:
+  # Called by cd.yml so a deploy can never ship something the matrix rejected.
+  workflow_call:
+
+# Read-only. Nothing in this workflow publishes, comments or tags; the deploy
+# lives in cd.yml behind a `production` environment.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  FORCE_COLOR: "1"
+  # Never let a CI run inherit production behaviour: the base-URL guard keys
+  # off RENDER / APP_ENV, and the satellite reporter keys off the webhook
+  # secret. Both must stay inert here.
+  APP_ENV: ci
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install flake8
+      - name: flake8
+        run: flake8 dash_model_viewer lib components pages tests scripts run.py
+
+      # The workflows lint themselves. This is not belt-and-braces: an invalid
+      # workflow file is the one defect CI structurally cannot report, because
+      # the run dies before a job exists to fail. A double-quoted string in a
+      # ${{ }} expression on line 67 of THIS file silently killed every CI and
+      # CD run on this repo for four days — nothing to click, nothing in the
+      # API but `conclusion: failure` with zero jobs. actionlint catches it in
+      # a second, and (this is the point) a pull request that reintroduces it
+      # gets a red check with the offending column underlined.
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+
+  # ---------------------------------------------------------------------
+  # THE PACKAGE, not the site.
+  #
+  # Installs ONLY the built wheel plus a pinned Dash — never requirements.txt.
+  # That is the point: it proves `pip install dash-model-viewer` works for
+  # someone who has never heard of this documentation site, and it is the job
+  # that would catch a site dependency leaking into the wheel's runtime path.
+  #
+  # The three suites named here are the package's own. They import `dash` and
+  # `dash_model_viewer` and nothing else; the site suites in the same directory
+  # would fail instantly in this environment, which is why the files are listed
+  # rather than the directory (LESSONS.md §19).
+  # ---------------------------------------------------------------------
+  package-matrix:
+    name: package · py${{ matrix.python }} · dash ${{ matrix.dash }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12"]
+        dash: ["4.1.0", "4.2.0", "4.3.0", "4.4.1"]
+        include:
+          # The declared floor and ceiling of requires-python, on pinned Dash.
+          - python: "3.9"
+            dash: "4.4.1"
+          - python: "3.13"
+            dash: "4.4.1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Build and install the wheel only
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel --outdir dist/
+          python -m pip install "dist/"*.whl
+          python -m pip install "dash==${{ matrix.dash }}" pytest
+      - name: Assert the resolved Dash is the pinned one
+        run: |
+          python -c "import dash, sys; v='${{ matrix.dash }}'; \
+            sys.exit(0 if dash.__version__ == v else \
+            f'dash {dash.__version__} != pinned {v}')"
+      - name: Package suites
+        run: |
+          pytest tests/test_components.py tests/test_index_order.py \
+                 tests/test_no_regeneration.py -q
+      - name: The wheel contains the package and nothing else
+        run: |
+          python - <<'PY'
+          import glob, zipfile
+          wheel = glob.glob("dist/*.whl")[0]
+          names = zipfile.ZipFile(wheel).namelist()
+          allowed_prefixes = ("dash_model_viewer/", "dash_model_viewer-")
+          stray = [n for n in names if not n.startswith(allowed_prefixes)]
+          assert not stray, f"docs site leaked into the wheel: {stray}"
+          for required in ("dash_model_viewer/vendor/model-viewer-umd.min.js",
+                           "dash_model_viewer/vendor/model-viewer-LICENSE",
+                           "dash_model_viewer/dash_model_viewer.js"):
+              assert required in names, f"missing from wheel: {required}"
+          print(f"{wheel}: {len(names)} entries, all in-package")
+          PY
+
+  test:
+    # SINGLE quotes inside ${{ }}. GitHub Actions expressions accept no other
+    # string delimiter, and a double quote is a LEX error — which invalidates
+    # the whole workflow file, not just this line. An invalid file is not
+    # reported as a failing check: the run is created, dies in zero seconds
+    # with zero jobs scheduled, and shows only "Failure" with nothing to open.
+    # Every CI and CD run on this repo did that, unnoticed, for four days —
+    # CD included, because its first job `uses:` this file. The `actionlint`
+    # step in the lint job exists so this can never be silent again.
+    name: py${{ matrix.python }} · ${{ matrix.backend }} · dash${{ matrix.dash && format(' {0}', matrix.dash) || ' (pinned)' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every backend gets a run on the current Python and the pinned Dash...
+        python: ["3.12"]
+        backend: [flask, fastapi, quart]
+        dash: [""]
+        include:
+          # ...the supported Python range gets a run on the default backend...
+          - python: "3.11"
+            backend: flask
+            dash: ""
+          - python: "3.13"
+            backend: flask
+            dash: ""
+          # ...and the bottom of the `~=4.4.1` range is pinned explicitly on
+          # both backends that matter, so a 4.4.0-only regression cannot hide
+          # behind pip resolving to 4.4.1. 4.3.0 is deliberately absent: its
+          # FastAPI backend 500s on every non-root URL (upstream, fixed in
+          # 4.4.0), which is why requirements.txt floors at 4.4.
+          - python: "3.12"
+            backend: fastapi
+            dash: "4.4.0"
+          - python: "3.12"
+            backend: flask
+            dash: "4.4.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Install the app
+        run: |
+          pip install -r requirements.txt
+          # markdown2dash 0.1.2 declares gunicorn<22 against the CVE-driven
+          # gunicorn>=23 floor. Same two-command install as the Dockerfile,
+          # render.yaml and scripts/dev.sh.
+          pip install --no-deps markdown2dash==0.1.2
+          # Dash's own extras are required for the ASGI backends: a bare
+          # `fastapi` install is not enough for dash.backends._fastapi to
+          # import. httpx backs starlette's TestClient.
+          if [ "${{ matrix.backend }}" != "flask" ]; then
+            pip install "dash[${{ matrix.backend }}]" httpx
+            # The backend extra from PyPI, same floor as requirements.txt.
+            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.3.4"
+          fi
+          pip install pytest pytest-cov
+          # An explicit matrix pin overrides requirements.txt, to prove the
+          # bottom of the supported range still works.
+          if [ -n "${{ matrix.dash }}" ]; then
+            pip install "dash[${{ matrix.backend }}]==${{ matrix.dash }}" \
+              || pip install "dash==${{ matrix.dash }}"
+          fi
+
+      - name: Confirm the pinned dependency versions
+        run: |
+          python - <<'PY'
+          import dash, dash_improve_my_llms as pkg, gunicorn
+
+          def parts(v):
+              return tuple(int(x) for x in v.split(".")[:3] if x.isdigit())
+
+          # 4.4 floor: 4.3.0's FastAPI backend 500s on every non-root URL.
+          assert parts(dash.__version__)[:2] >= (4, 4), dash.__version__
+          # 2.3.4 is the network standard: below it `resolve_site_title` does
+          # not exist and this site's published identity degrades to app.title.
+          assert parts(pkg.__version__) >= (2, 3, 4), pkg.__version__
+          # 21.x carried two request-smuggling CVEs (CVE-2024-6827,
+          # CVE-2024-1135). markdown2dash's spurious <22 pin must not win.
+          assert parts(gunicorn.__version__)[:2] >= (23, 0), gunicorn.__version__
+          print(f"dash {dash.__version__}, dash-improve-my-llms "
+                f"{pkg.__version__}, gunicorn {gunicorn.__version__}")
+          PY
+
+      # No CLERK_*, no CROSS_APP_WEBHOOK_SECRET, no SESSION_SECRET here ON
+      # PURPOSE. tests/conftest.py pins them empty and the fail-closed checks
+      # in tests/test_access.py depend on that posture; a secret injected here
+      # would make the suite pass for the wrong reason.
+      - name: Test suite (${{ matrix.backend }}, zero secrets)
+        env:
+          DASH_BACKEND: ${{ matrix.backend }}
+        run: pytest tests -q
+
+      - name: Boot under a production server
+        if: matrix.backend == 'flask'
+        run: |
+          gunicorn run:server -b 127.0.0.1:8550 --daemon --access-logfile - --error-logfile -
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8550/healthz && break
+            sleep 1
+          done
+          # A page that renders under the test client can still fail under a
+          # real WSGI worker — different import path, different working
+          # directory, no test-client conveniences.
+          curl -sf http://127.0.0.1:8550/ > /dev/null
+          curl -sf http://127.0.0.1:8550/networks > /dev/null
+          # The battery, against the same server a satellite deploys.
+          python3 scripts/network_smoke.py --base-url http://127.0.0.1:8550
+
+  docker:
+    name: docker image · boot · battery
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same build Render runs. This is where a dependency-resolution
+      # failure surfaces — at CI time, not deploy time, where the only signal
+      # is a dashboard log while the old image keeps serving.
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the production image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          tags: dash-model-viewer-docs:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # pip metadata is invisible from outside a running host, so the versions
+      # are asserted here, inside the artifact that actually ships.
+      - name: Version fingerprints inside the image
+        run: |
+          docker run --rm dash-model-viewer-docs:ci python -c "
+          from importlib.metadata import version
+
+          def parts(v):
+              return tuple(int(x) for x in v.split('.')[:3] if x.isdigit())
+
+          v = version('dash')
+          print('dash', v)
+          assert parts(v)[:2] >= (4, 4), f'expected dash >=4.4, image has {v}'
+
+          v = version('dash-improve-my-llms')
+          print('dash-improve-my-llms', v)
+          assert parts(v) >= (2, 3, 4), f'expected >=2.3.4 (resolve_site_title), image has {v}'
+
+          # markdown2dash installs with --no-deps to dodge its gunicorn<22
+          # pin; this assert is what proves the dodge kept working. 21.x
+          # carried two request-smuggling CVEs (CVE-2024-6827, CVE-2024-1135).
+          v = version('gunicorn')
+          print('gunicorn', v)
+          assert parts(v)[:2] >= (23, 0), f'expected gunicorn>=23, image has {v}'
+
+          # ...and that skipping its dependency graph did not skip the package.
+          import markdown2dash  # noqa: F401
+          print('markdown2dash importable')
+          "
+
+      # Boot with no secrets: Clerk falls open (dev mode), the reporter stays
+      # dormant, the hub client reports itself disabled. What this catches is
+      # any import-time or preload crash — the class of failure where the
+      # platform loops the worker and the deploy never goes live.
+      - name: Boot the container and wait for /healthz
+        run: |
+          docker run -d --name docs -p 8550:8550 dash-model-viewer-docs:ci
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8550/healthz > /dev/null; then
+              echo "healthy after ~$((i*2))s"
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' docs)" != "true" ]; then
+              echo "container exited during boot:"
+              docker logs docs
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "never became healthy; last logs:"
+          docker logs --tail 100 docs
+          exit 1
+
+      # The SAME script CD runs against https://modelviewer.2plot.dev, so a
+      # failure in CI and a failure in production read identically.
+      - name: Smoke battery against the booted container
+        run: python3 scripts/network_smoke.py --base-url http://127.0.0.1:8550
+
+      - name: Container logs (for the record)
+        if: always()
+        run: docker logs --tail 40 docs 2>/dev/null || true
+
+  pip-audit:
+    name: pip-audit (advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Advisory on purpose. A CVE in a transitive dependency of a docs site is
+    # worth knowing about the day it lands, and worth nobody's broken build at
+    # 2am. The report is the value; flip this off once the baseline is quiet.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      # Skip local vendor/ paths — pip-audit can only assess PyPI dists.
+      - run: |
+          grep -v '^\./vendor/' requirements.txt > /tmp/req-pypi.txt
+          pip-audit -r /tmp/req-pypi.txt --skip-editable

@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dash-model-viewer"
+version = "1.0.0"
+description = "Embed interactive 3D models directly into your Dash applications with Augmented Reality (AR) support"
+authors = [{name = "pip-install-python", email = "pipinstallpython@gmail.com"}]
+readme = "README.md"
+license = {text = "Apache-2.0"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: Dash",
+    "Topic :: Multimedia :: Graphics :: 3D Rendering",
+]
+# The package floor is the max across its dependency set. `dash` is the only
+# runtime dependency, and `dash.hooks.script` is what the whole architecture
+# rests on — CI's compat matrix (4.1.0 -> 4.4.1) is what keeps this honest.
+requires-python = ">=3.9"
+dependencies = [
+    "dash>=4.1",
+]
+
+# NOTE: deliberately no [project.entry-points."dash_hooks"].
+#
+# An entry point would make Dash import this package — and therefore emit ~1 MB
+# of vendored JavaScript — into every Dash app that merely has it installed,
+# used or not. The hook fires on import instead, which is exactly when a user
+# who actually wants a ModelViewer will have imported it.
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "flake8>=6.0",
+    "black>=23.0",
+]
+
+[project.urls]
+Homepage = "https://modelviewer.2plot.dev"
+Documentation = "https://modelviewer.2plot.dev"
+Repository = "https://github.com/pip-install-python/dash-model-viewer.git"
+Issues = "https://github.com/pip-install-python/dash-model-viewer/issues"
+Changelog = "https://github.com/pip-install-python/dash-model-viewer/blob/main/CHANGELOG.md"
+
+# Enumerate packages explicitly. `find_packages()` is how a docs site ends up
+# inside a wheel — see .subdomains/PACKAGING.md.
+[tool.setuptools]
+packages = ["dash_model_viewer"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+dash_model_viewer = [
+    "dash_model_viewer.js",
+    "vendor/model-viewer-umd.min.js",
+    "vendor/model-viewer-LICENSE",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# `.` so `run`, `lib` and `pages` import; `tests` so site tests can do
+# `from conftest import ...` the way the boilerplate's copies expect.
+pythonpath = [".", "tests"]
+addopts = "-rsxX -q --strict-markers"
+markers = [
+    "site: needs the documentation site's dependencies (requirements.txt), not just the wheel",
+]
+filterwarnings = ["ignore::DeprecationWarning"]

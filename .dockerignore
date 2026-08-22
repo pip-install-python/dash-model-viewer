@@ -1,0 +1,56 @@
+# The Dockerfile ends in `COPY . .`, so anything not excluded here is baked
+# into the production image.
+#
+# This file exists because of a real failure, caught the first time the image
+# was booted locally as part of the network-standard rollout: a developer's
+# `.env` (DASH_BACKEND=fastapi) was copied in, and the container died at boot
+# with "Could not import dash.backends._fastapi" — the FastAPI extra is not
+# installed in this image. It never showed up in CI, where the checkout has no
+# `.env` at all, which is exactly what makes it worth a file rather than a
+# lesson. The same COPY would carry real Clerk keys and the webhook secret
+# into an image layer on any machine that has them.
+
+# Secrets and per-developer configuration
+.env
+.env.*
+!.env.example
+flask_session/
+
+# Local state — the analytics ledger is a live file; an image must not ship
+# one developer's visits (and Render mounts a disk for it anyway).
+visitor_analytics.json
+visitor_analytics.json.lock
+.satellite_report.lease
+
+# Build environments the image rebuilds itself
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# VCS, tooling and caches
+.git/
+.gitignore
+.github/
+.idea/
+.vscode/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.claude/
+
+# Nothing in the image runs these
+tests/
+
+# NOT excluded, deliberately: docs/**/*.md and pages/home.md ARE the app.
+# pages/markdown.py globs them at import time and the whole site is built from
+# them, so a blanket `*.md` rule here would produce an image that boots with
+# zero pages. Do not "tidy" markdown out of the build context.
+
+# Build artifacts from the host. `pip install .` runs inside the image and
+# would otherwise inherit the host's stale `build/` as setuptools' scratch dir.
+build/
+dist/
+*.egg-info/
+github_assets/

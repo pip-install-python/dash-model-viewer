@@ -1,0 +1,29 @@
+{
+  "name": "dash-model-viewer \u2014 interactive 3D models and AR for Dash",
+  "short_name": "dash-model-viewer",
+  "description": "Embed interactive 3D models directly into your Dash applications with Augmented Reality (AR) support.",
+  "icons": [
+    {
+      "src": "/assets/favicon/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/favicon/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/favicon/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "theme_color": "#4C6EF5",
+  "background_color": "#1a1b1e",
+  "display": "standalone",
+  "start_url": "/"
+}

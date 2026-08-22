@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ========================================================================
+         ANALYTICS SECTION
+         Configure your analytics tracking here
+         ======================================================================== -->
+
+    <!-- Google Analytics
+         Replace G-XXXXXXXXXX with your Google Analytics Measurement ID
+         Get your ID from: https://analytics.google.com/
+         Uncomment the lines below to enable -->
+    <!--
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    -->
+
+    <!-- ========================================================================
+         BASIC META TAGS
+         Essential meta tags for character encoding and responsive design
+         ======================================================================== -->
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- ========================================================================
+         PRIMARY META TAGS
+         These are the main tags that define your site for search engines
+         Customize these for your project
+         ======================================================================== -->
+
+    <!-- Shows in the browser tab and in search results (50-60 chars optimal).
+
+         {%title%} is Dash's own placeholder. It resolves to the `title=`
+         passed to dash.register_page for the current page, falling back to
+         app.title. pages/markdown.py registers one per page already, and the
+         hard-coded string that used to sit here silently discarded every one
+         of them.
+
+         dash-improve-my-llms rewrites this element per page as well. Keeping
+         the placeholder is what makes titles correct even when that rewriting
+         is switched off: LLMSConfig(prerender=False) is the documented
+         one-argument rollback, and without the placeholder it would quietly
+         revert every page on every satellite to one identical string.
+
+         TWO RULES IF YOU EDIT THIS BLOCK.
+
+         1. Keep the title element. The package locates it with a dot-matches-
+            newline regex anchored on the opening and closing tags, and
+            rewrites the first match. Remove the element and there is no
+            closing tag left to anchor on, so nothing is rewritten and no page
+            has a title at all.
+
+         2. Never spell the tag name in angle brackets anywhere in this
+            comment. The same regex would then start matching HERE and run to
+            the next closing tag it finds, so everything in between — every
+            line of this comment, and any markup after it — is replaced by the
+            rewritten title and vanishes from the served page. With rewriting
+            on it still looks correct, which is what makes it expensive: the
+            damage is only visible in the served bytes. The comment below this
+            one used to do exactly that, which is why it now says "title
+            element" in words.
+         ======================================================================== -->
+    <title>{%title%}</title>
+
+    <!-- Main title for SEO - should match or complement the title element -->
+    <meta name="title" content="dash-model-viewer — interactive 3D models and AR for Dash">
+
+    <!-- Keywords - Helps search engines understand your content (optional in 2024) -->
+    <meta name="keywords" content="Python Dash, documentation, Dash Mantine Components, interactive docs, Python documentation, Plotly Dash, markdown docs, technical documentation, developer tools">
+
+    <!-- Author - Your name or organization -->
+    <meta name="author" content="Pip Install Python LLC">
+
+    <!-- Robots - Tell search engines how to index your site -->
+    <meta name="robots" content="index, follow">
+
+    <!-- Language - Specify the primary language of your content -->
+    <meta name="language" content="English">
+
+    <!-- ========================================================================
+         OPEN GRAPH / FACEBOOK META TAGS
+         These control how your site appears when shared on Facebook, LinkedIn, etc.
+         Learn more: https://ogp.me/
+         ========================================================================
+         ONE RULE, and it is the whole reason this block is short: declare only
+         what Dash does NOT emit itself.
+
+         `dash.register_page()` makes Dash generate `description`, `og:type`,
+         `og:title`, `og:description`, `og:image` and the full `twitter:*` set
+         on EVERY request, per page (see `_page_meta_tags` in dash/_pages.py).
+         Declaring them here as well produces two of each — and the static copy
+         describes the SITE while Dash's describes the PAGE, so the duplicate is
+         both redundant and less accurate. Which one a scraper honours is not
+         defined; in practice the later tag wins, which is Dash's.
+
+         `og:site_name` and `og:url` are genuinely absent from Dash's set, so
+         they belong here. tests/test_social_card.py asserts the count.
+         ======================================================================== -->
+
+    <!-- OG URL - The canonical URL of your site -->
+    <meta property="og:url" content="https://modelviewer.2plot.dev/">
+
+    <!-- OG Image — the URL itself is NOT declared here. Deliberately.
+         Ideal is 1200x630px, JPG/PNG/GIF, < 8MB.
+
+         Dash emits og:image and twitter:image for every page from
+         register_page(image_url=...), which lib/constants.OG_IMAGE_URL now
+         supplies. A static copy here would make TWO of each tag and let the
+         scraper choose — which is exactly what went wrong before: with no
+         image_url passed, Dash INFERRED one from the assets folder, found
+         assets/logo.svg, and emitted it alongside this block. Social scrapers
+         reject SVG, and the inferred tag came last, so the card that had been
+         carefully described here lost to an image nothing could render.
+
+         What stays are the auxiliaries Dash never emits. Keep them in step
+         with lib/constants.OG_IMAGE_* — a width/height that disagrees with
+         the file is worse than declaring none, because the platform reserves
+         that box and crops into it.
+
+         secure_url is the https duplicate Facebook still reads; type saves
+         the scraper a HEAD request to learn the format. Both are things Dash
+         does not emit, which is the only reason they belong here. -->
+    <meta property="og:image:secure_url" content="https://cdn.2plot.ai/github_assets/modelviewer.2plot.dev.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="dash-model-viewer — interactive 3D models and AR for Dash">
+
+    <!-- OG Site Name - Your site/brand name -->
+    <meta property="og:site_name" content="dash-model-viewer — interactive 3D models and AR for Dash">
+
+    <!-- ========================================================================
+         TWITTER CARD META TAGS
+         Control how your site appears when shared on Twitter/X
+         Learn more: https://developer.twitter.com/en/docs/twitter-for-websites/cards
+         ========================================================================
+         Same rule as the Open Graph block above: Dash emits `twitter:card`,
+         `twitter:url`, `twitter:title`, `twitter:description` and
+         `twitter:image` per page. All five used to be declared here as well,
+         which is why every page shipped two of each.
+
+         Only the alt text is left, because Dash omits it. -->
+    <meta name="twitter:image:alt" content="dash-model-viewer — interactive 3D models and AR for Dash">
+
+    <!-- Optional: Twitter Creator - Your Twitter handle -->
+    <!-- <meta property="twitter:creator" content="@yourtwitterhandle"> -->
+
+    <!-- ========================================================================
+         FAVICON CONFIGURATION
+         Icons for browser tabs, bookmarks, and mobile home screens
+         Generate favicons at: https://realfavicongenerator.net/
+         ======================================================================== -->
+
+    <!-- Standard favicon (32x32 or 16x16) -->
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+
+    <!-- The full icon set ships in assets/favicon/. These were commented out
+         while it did not, with a note saying the files were missing — that
+         note outlived the files' arrival, so the icons sat in the repo unused
+         and the install prompt stayed impossible. Note the /assets/favicon/
+         prefix: the commented-out originals pointed at /assets/, one level up,
+         where none of these are served.
+
+         The manifest is what turns this into an installable app rather than a
+         bookmarkable page. A fork edits assets/favicon/site.webmanifest — its
+         name, short_name and theme_color are per-site, and a browser silently
+         declines to offer installation if `name` is empty. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/favicon/site.webmanifest">
+    <meta name="apple-mobile-web-app-title" content="dash-model-viewer">
+    <meta name="msapplication-TileColor" content="#4C6EF5">
+    <meta name="msapplication-TileImage" content="/assets/favicon/android-chrome-192x192.png">
+
+    <!-- Theme color - Sets the browser UI color on mobile (matches your brand).
+         Keep this in step with `theme_color` in assets/favicon/site.webmanifest;
+         a mismatch shows one colour in the browser chrome and another on the
+         installed app's splash screen. -->
+    <meta name="theme-color" content="#4C6EF5">
+
+    <!-- ========================================================================
+         CANONICAL URL — deliberately NOT set here.
+
+         dash-improve-my-llms injects a per-page <link rel="canonical"> built
+         from app._base_url (see lib/constants.py). A hard-coded tag in this
+         template does not replace that one, it joins it: every page then
+         ships two canonical tags, one of them pointing at the site root, and
+         a conflicting pair is treated as no signal at all.
+
+         Change the origin with the APP_BASE_URL environment variable, not
+         here.
+         ======================================================================== -->
+
+    <!-- ========================================================================
+         URL SYNC ON SPA NAVIGATION
+         ========================================================================
+         Ported from leaflet.2plot.dev, adapted: that site hard-codes a static
+         canonical and this one does not (see above), so this script CORRECTS
+         tags that exist and never creates one.
+
+         What goes stale, and why each is stale for a different reason:
+
+           og:url        static in this file, so it says "/" on every page;
+           twitter:url   Dash builds it from request.url — correct for the
+                         page the visitor LANDED on, then frozen there;
+           canonical     dash-improve-my-llms injects it per page server-side,
+                         which is right on arrival and wrong after one
+                         client-side route change.
+
+         This is a single-page app: Dash routes through history.pushState,
+         which fires no event, so the tags keep advertising the entry URL for
+         the rest of the session. Google runs JS and will see the corrected
+         values; social scrapers do NOT, which is why the scheme half of this
+         problem had to be fixed server-side in lib/proxy.py instead.
+
+         The origin is read from the og:url tag above rather than hard-coded
+         again — one value to change in a fork. It is deliberately not
+         location.origin: a hosting platform's generated hostname keeps
+         resolving after a custom domain is attached, and hits on it must
+         consolidate onto the custom domain rather than compete with it.
+         ======================================================================== -->
+    <script>
+        (function () {
+            var declared = document.querySelector('meta[property="og:url"]');
+            var ORIGIN;
+            try {
+                ORIGIN = new URL(declared.content).origin;
+            } catch (e) {
+                return;  // no og:url to learn from: leave every tag alone
+            }
+
+            function sync() {
+                var path = location.pathname.replace(/\/+$/, '') || '/';
+                var href = ORIGIN + (path === '/' ? '/' : path);
+
+                // querySelectorAll, not querySelector: og:url and twitter:url
+                // may each appear once from this template and once from the
+                // package's prerender block, and both copies must agree.
+                document.querySelectorAll(
+                    'meta[property="og:url"], meta[property="twitter:url"], ' +
+                    'link[rel="canonical"]'
+                ).forEach(function (el) {
+                    if (el.tagName === 'LINK') { el.href = href; }
+                    else { el.setAttribute('content', href); }
+                });
+            }
+
+            sync();
+
+            ['pushState', 'replaceState'].forEach(function (method) {
+                var original = history[method];
+                history[method] = function () {
+                    var result = original.apply(this, arguments);
+                    sync();
+                    return result;
+                };
+            });
+            window.addEventListener('popstate', sync);
+        })();
+    </script>
+
+    <!-- ========================================================================
+         SEARCH ENGINE VERIFICATION
+         Verify ownership of your site with Google, Bing, etc.
+         ======================================================================== -->
+
+    <!-- Google Search Console
+         Get your code from: https://search.google.com/search-console -->
+    <!-- <meta name="google-site-verification" content="YOUR_GOOGLE_VERIFICATION_CODE"> -->
+
+    <!-- Bing Webmaster Tools
+         Get your code from: https://www.bing.com/webmasters -->
+    <!-- <meta name="msvalidate.01" content="YOUR_BING_VERIFICATION_CODE"> -->
+
+    <!-- ========================================================================
+         STRUCTURED DATA (Schema.org)
+         Helps search engines understand your content and show rich results
+         Learn more: https://schema.org/
+         Test your markup: https://search.google.com/test/rich-results
+         ======================================================================== -->
+
+    <!-- Organization Schema - Defines your organization/brand -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Pip Install Python LLC",
+        "description": "Open-source Dash component libraries and the documentation system they are published with.",
+        "url": "https://2plot.ai",
+        "logo": "https://cdn.2plot.ai/github_assets/modelviewer.2plot.dev.png",
+        "sameAs": [
+            "https://github.com/pip-install-python",
+            "https://www.youtube.com/@2plotai",
+            "https://2plot.dev",
+            "https://www.linkedin.com/in/austin-k-274140161/"
+        ],
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "austin@pip-install-python.com",
+            "contactType": "customer support"
+        }
+    }
+    </script>
+
+    <!-- Software Application Schema - Defines your application -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "dash-model-viewer — interactive 3D models and AR for Dash",
+        "description": "dash-documentation-boilerplate \u2014 the markdown-driven documentation template every *.2plot.dev component site is forked from. By Pip Install Python.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "url": "https://modelviewer.2plot.dev",
+        "license": "https://opensource.org/licenses/MIT",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Organization",
+            "name": "Pip Install Python LLC",
+            "url": "https://2plot.ai"
+        },
+        "softwareVersion": "1.2.5",
+        "programmingLanguage": "Python"
+    }
+    </script>
+
+    <!-- ========================================================================
+         LLM DISCOVERY META TAGS
+         These tags help AI assistants discover and use your documentation
+         Part of dash-improve-my-llms integration
+         ======================================================================== -->
+
+    <!-- /page.json and /architecture.txt were removed in dash-improve-my-llms
+         2.0 (Dash 4.3's MCP server covers structured introspection). Pointing
+         agents at them advertised two 404s. -->
+    <meta name="llms-txt" content="https://modelviewer.2plot.dev/llms.txt">
+    <meta name="llms-architecture" content="https://modelviewer.2plot.dev/sitemap.xml">
+    <meta name="llms-github-repo" content="https://github.com/pip-install-python/Dash-Documentation-Boilerplate">
+
+
+    <!-- ========================================================================
+         PERFORMANCE OPTIMIZATION
+         Preconnect to external domains to speed up resource loading
+         ======================================================================== -->
+
+    <!-- Google Fonts - If you're using custom fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Common CDNs - Add any CDNs you use -->
+    <!-- <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin> -->
+    <!-- <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin> -->
+
+    <!-- ========================================================================
+         DASH-SPECIFIC TEMPLATE TAGS
+         These are required by Dash - DO NOT MODIFY
+         ======================================================================== -->
+
+    {%metas%}
+    {%favicon%}
+    {%css%}
+
+    <!-- ========================================================================
+         NO-JAVASCRIPT FALLBACK
+         Content shown to users/bots when JavaScript is disabled
+         Provides direct access to documentation for search engines and LLMs
+         ======================================================================== -->
+
+    <noscript>
+        <div style="padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; line-height: 1.6;">
+            <h1>dash-model-viewer — interactive 3D models and AR for Dash</h1>
+            <p><strong>This application requires JavaScript to run.</strong></p>
+
+            <h2>For AI/LLM Access and Documentation:</h2>
+            <p>This site provides comprehensive documentation in multiple formats optimized for both humans and AI assistants:</p>
+
+            <ul style="margin: 20px 0;">
+                <li><a href="https://modelviewer.2plot.dev/llms.txt" style="color: #4C6EF5; text-decoration: none;"><strong>llms.txt</strong></a> - Every page's prose, plus the cross-host network directory</li>
+                <li><a href="https://modelviewer.2plot.dev/quick-start/llms.txt" style="color: #4C6EF5; text-decoration: none;"><strong>&lt;page&gt;/llms.txt</strong></a> - One page's documentation on its own</li>
+                <li><a href="https://modelviewer.2plot.dev/sitemap.xml" style="color: #4C6EF5; text-decoration: none;"><strong>sitemap.xml</strong></a> - Complete site structure for search engines</li>
+                <li><a href="https://modelviewer.2plot.dev/robots.txt" style="color: #4C6EF5; text-decoration: none;"><strong>robots.txt</strong></a> - Crawler instructions</li>
+            </ul>
+
+            <p>These endpoints provide detailed information about the application structure, components, functionality, and usage patterns in formats optimized for automated processing.</p>
+
+            <h2>Features:</h2>
+            <ul>
+                <li>Markdown-based documentation with custom directives</li>
+                <li>Interactive component examples with live code</li>
+                <li>Data visualization with Plotly integration</li>
+                <li>Dark/light theme support</li>
+                <li>Mobile-responsive design</li>
+                <li>LLM-friendly documentation formats</li>
+            </ul>
+        </div>
+    </noscript>
+
+</head>
+<body>
+    <!-- ========================================================================
+         APPLICATION ENTRY POINT
+         This is where your Dash application renders
+         DO NOT MODIFY
+         ======================================================================== -->
+
+    {%app_entry%}
+
+    <!-- ========================================================================
+         DASH FOOTER SCRIPTS
+         Required Dash scripts and configuration
+         DO NOT MODIFY
+         ======================================================================== -->
+
+    <footer>
+        {%config%}
+        {%scripts%}
+        {%renderer%}
+    </footer>
+</body>
+</html>

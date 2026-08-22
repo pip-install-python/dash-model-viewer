@@ -1,0 +1,17 @@
+[flake8]
+# Line length is not policed: this repo's comments carry a lot of explanation
+# and reflowing them to 79 columns would make them harder to read, not easier.
+max-line-length = 120
+extend-ignore = E203, W503, E501
+exclude =
+    .git,
+    .venv,
+    __pycache__,
+    node_modules,
+    vendor,
+    .idea,
+    docs/*/,
+per-file-ignores =
+    # run.py's satellite reporter import sits after the app is fully wired,
+    # because starting it earlier would report against a half-built registry.
+    run.py: E402
