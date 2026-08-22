@@ -17,12 +17,30 @@ VIEWER_ATTRS = {
 # The page opens on a relief of this site's own logo, carved with DEFAULT
 # parameters and zero API calls — so the geometry half is demonstrably working
 # before anyone spends anything, and the page is never an empty box.
+#
+# Carved at IMPORT, and therefore wrapped. Dash imports every page module while
+# constructing the app, so an exception raised out here is not a broken page —
+# it is a site that will not boot, with a traceback naming a docs example as
+# the cause. That is exactly what happened on the first deploy: Pillow was
+# missing from requirements.txt, `carve()` raised ModuleNotFoundError, and all
+# ten pages went down over one sample image. Pillow is declared now
+# (requirements.txt) and tests/test_requirements.py keeps it declared; this
+# guard is the second line, for every other reason a carve might fail on a
+# machine we have not thought of yet. A degraded example beats a dead site.
 _SAMPLE = Path("assets/logo.png")
-_sample_glb, _sample_stats = relief.carve(
-    _SAMPLE.read_bytes(),
-    {"depth_profile": "punchy", "depth_scale": 0.16, "invert": False,
-     "background": "alpha", "metallic": 0.15, "roughness": 0.55},
-)
+try:
+    _sample_glb, _sample_stats = relief.carve(
+        _SAMPLE.read_bytes(),
+        {"depth_profile": "punchy", "depth_scale": 0.16, "invert": False,
+         "background": "alpha", "metallic": 0.15, "roughness": 0.55},
+    )
+    _sample_error = None
+except Exception as exc:  # noqa: BLE001 — a docs example may not kill the boot
+    _sample_glb, _sample_stats = None, {}
+    _sample_error = f"{type(exc).__name__}: {exc}"
+    print(f"[image-to-3d] WARNING: the sample relief could not be carved "
+          f"({_sample_error}). The page will render without its opening "
+          f"model; uploads will fail the same way until this is fixed.")
 
 component = html.Div(
     [
@@ -61,7 +79,7 @@ component = html.Div(
                 ),
                 dmv.ModelViewer(
                     id="i3-viewer",
-                    src=relief.to_data_url(_sample_glb),
+                    src=relief.to_data_url(_sample_glb) if _sample_glb else None,
                     alt="A bas-relief carved from the dash-model-viewer logo",
                     camera_controls=True,
                     camera_orbit="20deg 72deg 0.6m",

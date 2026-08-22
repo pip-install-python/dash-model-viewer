@@ -21,6 +21,24 @@ flake8>=6.0
 # The page degrades to an explanation when ANTHROPIC_API_KEY is unset.
 anthropic>=0.60
 
+# --- the Image-to-3D page (docs/image-to-3d) ---
+# SITE ONLY, and a RUNTIME dependency, not a build-time one. `scripts/` uses
+# Pillow too (make_brand_assets, make_social_card) and those genuinely are
+# build-time — they guard the import and exit with an instruction. That is why
+# Pillow was deliberately kept out of this file, and the reasoning was correct
+# right up until lib/relief.py shipped: `carve()` needs PIL on every request,
+# and docs/image-to-3d/relief_page.py carves the sample relief at MODULE
+# IMPORT, so a missing Pillow took the whole site's boot with it.
+#
+# It booted fine everywhere it was tested because every dev machine already
+# had Pillow; only a clean image showed the gap. tests/test_requirements.py
+# now fails on this class before an image ever gets built.
+#
+# The PACKAGE must never depend on this: someone running
+# `pip install dash-model-viewer` is getting a 3D component, not an imaging
+# library. pyproject.toml's only runtime dependency stays `dash`.
+Pillow>=10.0
+
 # Core scientific stack
 pandas>=1.2.3
 plotly>=5.0.0
