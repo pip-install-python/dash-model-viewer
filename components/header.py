@@ -152,12 +152,31 @@ def create_header(data):
                                         fw=700,
                                         c="indigo.4",
                                         id="dash-docs-title",
+                                        # Hidden below 36em (576px). The name
+                                        # is long, and on a phone it competes
+                                        # with the hamburger on its left and
+                                        # the theme toggle and avatar on its
+                                        # right; the mark alone still says
+                                        # whose site this is. Visible again
+                                        # from small tablets up.
+                                        visibleFrom="xs",
                                     ),
                                 ],
                                 gap="sm",
                             ),
                             href="/",
                             underline=False,
+                            # The wordmark above IS this link's accessible
+                            # name, and `visibleFrom` hides it with
+                            # `display: none` — which removes it from the
+                            # accessibility tree, not just from view. Without
+                            # this label the home link would be announced as
+                            # a bare "link" on exactly the screens where the
+                            # text is hidden, because the logo beside it is
+                            # decorative (alt=""). Same class of defect as the
+                            # icon-only controls, arriving through a styling
+                            # prop rather than a missing attribute.
+                            **{"aria-label": f"{SITE_SHORT_NAME} — home"},
                         ),
                     ],
                     gap="md",
