@@ -41,7 +41,7 @@ Pillow>=10.0
 
 # Core scientific stack
 pandas>=1.2.3
-plotly>=5.0.0
+plotly>=6.9.0
 requests>=2.27.1
 retrying
 setuptools
