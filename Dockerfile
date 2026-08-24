@@ -4,6 +4,25 @@
 # the service, or the gate is testing something else.
 FROM python:3.12-slim
 
+# Unbuffered stdout, or none of the app's print() diagnostics reliably reach
+# the platform logs: Python block-buffers stdout when it is not a tty, so the
+# boot lines this deployment relies on for observability ([auth] state, the
+# interactive-gate summary, [satellite-traffic] wiring) can sit invisible
+# while logging-based lines sail through on stderr. Those boot lines ARE the
+# deploy acceptance check here — three absences and one presence — so they
+# cannot be the ones that go missing.
+ENV PYTHONUNBUFFERED=1
+
+# curl only — the HEALTHCHECK below uses it. Deliberately NO nodejs/npm.
+# The template's fork lineage carried an apt-installed Node toolchain that
+# `npm install`ed a package.json nothing in the repo used, shipping a
+# vulnerable transitive dependency into every production image (issue #12,
+# CVE-2026-1615); it was dropped at the template in 1.6.9. This repo never
+# had it: the 1.0.0 rebuild removed webpack, babel and package.json outright,
+# and the JS that ships — the hand-authored shim and Google's vendored UMD
+# bundle — is COMMITTED, not built. A docs site is a Python app. If this
+# package ever does build its component's JS, that toolchain gets added
+# knowingly, not inherited.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
     && rm -rf /var/lib/apt/lists/*
@@ -23,8 +42,16 @@ RUN pip install pandas>=1.2.3 plotly>=5.0.0 pydantic>=2.3.0
 #
 # (The vendored model-viewer bundle is a different thing entirely — it lives
 # inside the dash_model_viewer package as package data.)
-COPY requirements.txt .
+# CACHE SEMANTICS (the round-2 fleet lesson, found by pannellum 2026-08-22):
+# this layer re-runs ONLY when vendor/ or requirements.txt bytes change. A
+# `>=` floor can NEVER pull a newer release through a cache hit — a code-only
+# commit rebuilds the app layers below while pip silently keeps whatever
+# version the image was first built with. Ship every dependency upgrade as a
+# floor bump in requirements.txt (grep the number — it also lives in run.py's
+# boot floor and the tests): the bump IS the cache bust, and the boot floor
+# turns a stale image from a silent downgrade into a loud refusal to start.
 COPY vendor/ ./vendor/
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 # markdown2dash pins gunicorn<22, conflicting with the CVE-driven gunicorn>=23
 # in requirements.txt (CVE-2024-6827, CVE-2024-1135 — request smuggling). Its

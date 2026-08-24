@@ -123,7 +123,20 @@ python-dotenv>=1.0.0
 # Installed from PyPI. (2.1.0 and 2.3.1 were assigned during that package's
 # development and never published.)
 #
-# 2.6.1 is the network floor, and run.py enforces it fatally.
+# 2.7.1 is the network floor, and run.py enforces it fatally.
+#
+# THIS LINE CHANGING IS THE CACHE BUST. The Docker layer that runs
+# `pip install -r requirements.txt` re-runs only when these bytes change, so a
+# `>=` floor can never pull a newer release through a cache hit — a code-only
+# commit rebuilds the app layers while pip keeps whatever version the image was
+# first built with. Every dependency upgrade ships as a bump to the number
+# here; the bump IS the bust, and run.py's boot floor turns a stale image from
+# a silent downgrade into a loud refusal to start.
+#
+# 2.7.1 adds the llms.txt v2 discovery relations and Link headers, the
+# text/plain Accept ramp, and the representation digest. 2.7.0 dedups the
+# prerender H1 and the home footer's doubled /llms.txt link, and hardens the
+# idempotency probe.
 #
 # 2.6.1 makes the prerendered body visible to consumers that do not run
 # JavaScript: the `#dimll-prerender` div previously carried a `hidden`
@@ -167,10 +180,10 @@ python-dotenv>=1.0.0
 # tests/test_llms_routes.py asserts that split, and scripts/network_smoke.py
 # asserts it against a live host, so a stale artifact fails a battery by name
 # rather than serving quietly.
-dash-improve-my-llms[flask]>=2.6.1
-# dash-improve-my-llms[fastapi]>=2.6.1   # Dash 4.4+ FastAPI backend
-# dash-improve-my-llms[quart]>=2.6.1     # Dash 4.4+ Quart backend
-# dash-improve-my-llms[all]>=2.6.1       # all three
+dash-improve-my-llms[flask]>=2.7.1
+# dash-improve-my-llms[fastapi]>=2.7.1   # Dash 4.4+ FastAPI backend
+# dash-improve-my-llms[quart]>=2.7.1     # Dash 4.4+ Quart backend
+# dash-improve-my-llms[all]>=2.7.1       # all three
 
 # Clerk authentication (dash-clerk-auth, vendored — not on PyPI).
 #

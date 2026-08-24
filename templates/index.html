@@ -378,11 +378,19 @@
          ======================================================================== -->
 
     <noscript>
+        <!-- No <h1> in here, deliberately: crawlers run no JavaScript and
+             PARSE noscript content, so an h1 in this block becomes a second
+             site-wide h1 on every page, competing with each page's own. The
+             heading hierarchy below therefore starts at h2, and
+             tests/test_config.py pins it. Found on the llms-2plot-dev fork
+             (2026-08-23) and fixed at the template; this fork's own copy was
+             caught by the every-page single-h1 pin the same round — the
+             prerender header plus this block made two, on every page. -->
         <div style="padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; line-height: 1.6;">
-            <h1>dash-model-viewer — interactive 3D models and AR for Dash</h1>
+            <h2>dash-model-viewer — interactive 3D models and AR for Dash</h2>
             <p><strong>This application requires JavaScript to run.</strong></p>
 
-            <h2>For AI/LLM Access and Documentation:</h2>
+            <h3>For AI/LLM Access and Documentation:</h3>
             <p>This site provides comprehensive documentation in multiple formats optimized for both humans and AI assistants:</p>
 
             <ul style="margin: 20px 0;">
@@ -394,7 +402,7 @@
 
             <p>These endpoints provide detailed information about the application structure, components, functionality, and usage patterns in formats optimized for automated processing.</p>
 
-            <h2>Features:</h2>
+            <h3>Features:</h3>
             <ul>
                 <li>Markdown-based documentation with custom directives</li>
                 <li>Interactive component examples with live code</li>

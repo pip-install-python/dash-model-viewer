@@ -238,3 +238,23 @@ def test_no_links_to_retired_domains():
         for match in RETIRED_LINKS.finditer(path.read_text(errors="ignore")):
             offenders.append(f"{path.relative_to(REPO_ROOT)} -> {match.group(1)}")
     assert offenders == [], f"links to retired domains: {offenders}"
+
+
+def test_noscript_block_carries_no_h1():
+    """Crawlers run no JavaScript and PARSE noscript content — an h1 there
+    becomes a second site-wide h1 on every page, competing with each
+    page's own. Found on the llms-2plot-dev fork (2026-08-23) and fixed at the
+    template; this fork carried its own copy until the every-page
+    single-h1 pin caught it the same round. This pins it here. HTML comments are stripped first so the
+    explanatory comment naming the tag can't trip the check."""
+    import re
+    from pathlib import Path
+
+    html = (Path(__file__).resolve().parent.parent / "templates" / "index.html").read_text()
+    html = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+    noscript = re.search(r"<noscript>(.*?)</noscript>", html, re.S)
+    assert noscript, "index.html lost its noscript block?"
+    assert "<h1" not in noscript.group(1), (
+        "the noscript block carries an <h1> — every page now has a second "
+        "site-wide h1 in the crawler's parse; use h2/h3 in this block"
+    )

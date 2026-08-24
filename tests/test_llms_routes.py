@@ -137,6 +137,119 @@ def test_healthz(client):
     assert "ok" in response.text.lower()
 
 
+def test_healthz_is_live_not_a_snapshot(monkeypatch):
+    """The payload must be built per request, not closed over at registration.
+
+    A snapshot was harmless while every field was static and silently wrong
+    the moment one is not: on llms-2plot-dev the route is registered before
+    configure_geo runs, so a snapshot reported the geo guardrail unconfigured
+    on a host where it is configured — the diagnostic lying in exactly the
+    situation it exists for (found 2026-08-23, fixed fork-side first).
+    """
+    from types import SimpleNamespace
+
+    from flask import Flask
+
+    from lib.health import register_health_route
+
+    monkeypatch.setenv("SATELLITE_APP_KEY", "before")
+    stub = SimpleNamespace(server=Flask("healthz_snapshot_pin"))
+    register_health_route(stub, "flask")
+    probe = stub.server.test_client()
+    assert probe.get("/healthz").get_json()["app"] == "before"
+
+    monkeypatch.setenv("SATELLITE_APP_KEY", "after")
+    assert probe.get("/healthz").get_json()["app"] == "after"
+
+    # Flask lane: the route hands its own request headers to geo's
+    # `resolved` — same contract the FastAPI test pins for Starlette.
+    body = probe.get("/healthz", headers={"CF-IPCountry": "FR"}).get_json()
+    if body.get("geo"):
+        assert "FR" in body["geo"]["resolved"], body["geo"]
+
+
+def test_healthz_identity_fields(monkeypatch):
+    """`build` says which commit answered, `app` says which satellite —
+    different questions on a fleet where every host shares one template and
+    a hostname can be repointed between services."""
+    from lib.health import health_payload
+
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "cafebabe")
+    monkeypatch.setenv("SATELLITE_APP_KEY", "modelviewer")
+    payload = health_payload("flask")
+    assert payload["build"] == "cafebabe"
+    assert payload["app"] == "modelviewer"
+
+    monkeypatch.delenv("SATELLITE_APP_KEY")
+    assert health_payload("flask")["app"] == "unknown"
+
+
+def test_fastapi_healthz_renders_from_the_shared_payload(monkeypatch):
+    """cd.yml's build-match wait polls /healthz for `build`; the FastAPI
+    route used to construct its own payload without it, so a FastAPI deploy
+    fell into the "predates the build field" warning path forever —
+    verifying whichever release happened to be serving (the muicharts
+    defect, reintroduced per-backend; found on llms-2plot-dev 2026-08-23)."""
+    fastapi = pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    from lib.asgi_routes import build_health_router
+
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "cafebabe")
+    monkeypatch.setenv("SATELLITE_APP_KEY", "modelviewer")
+    api = fastapi.FastAPI()
+    api.include_router(build_health_router())
+    body = TestClient(api).get(
+        "/healthz", headers={"CF-IPCountry": "DE"}
+    ).json()
+    assert body["build"] == "cafebabe"
+    assert body["app"] == "modelviewer"
+    assert body["backend"] == "fastapi"
+    # THIS request's headers must reach geo's `resolved` — the route passes
+    # them explicitly, because the Flask-context fallback can never see a
+    # Starlette request: pannellum's production healthz (FastAPI) answered
+    # "no request context" forever until the round-3 wave-1 wire check
+    # caught it (2026-08-23).
+    if body.get("geo"):
+        assert "DE" in body["geo"]["resolved"], body["geo"]
+
+
+def test_resolved_country_reads_explicit_headers_without_a_request():
+    """The context-free pin — the only one that can actually fail.
+
+    The in-request pins above pass even if a Flask route drops its
+    `headers=`: inside a request the context fallback reads the same
+    headers, and the lanes that genuinely break (Starlette/Quart) are
+    unreachable from a Flask-pinned suite. Calling _resolved_country
+    with a plain dict OUTSIDE any request context has no fallback to
+    hide behind (dash-flows' finding, 2026-08-23).
+    """
+    from lib.health import _resolved_country
+
+    result = _resolved_country({"CF-IPCountry": "DE"})
+    if result.startswith("unavailable (pre-2.7.0"):
+        pytest.skip("geo shipped in dash-improve-my-llms 2.7.0")
+    assert "DE" in result, result
+
+
+def test_healthz_geo_block_is_counts_not_codes():
+    """Present on dash-improve-my-llms >= 2.7.0 (counts and flags only — a
+    health endpoint is not where anyone learns policy), OMITTED on older
+    packages rather than error-flagged: a host on an older floor is not
+    broken, it predates the diagnostic."""
+    from lib.health import health_payload
+
+    payload = health_payload("flask")
+    try:
+        from dash_improve_my_llms import geo  # noqa: F401
+    except ImportError:
+        assert "geo" not in payload
+    else:
+        block = payload["geo"]
+        assert isinstance(block["configured"], bool)
+        assert isinstance(block["denied"], int), "counts, never country codes"
+
+
 # ---------------------------------------------------------------------------
 # Content negotiation on /<page>/llms.txt (dash-improve-my-llms 2.2.0)
 #
