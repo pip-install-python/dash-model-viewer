@@ -2,7 +2,7 @@
 # builds on 3.11.8 while its render.yaml deploys 3.12.0, so its container
 # battery green-lights a Python that production never runs. Same base here as
 # the service, or the gate is testing something else.
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Unbuffered stdout, or none of the app's print() diagnostics reliably reach
 # the platform logs: Python block-buffers stdout when it is not a tty, so the
