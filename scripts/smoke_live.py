@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Post-deploy checks against a *live* satellite.
 
-    python scripts/smoke_live.py https://modelviewer.2plot.dev
+    python scripts/smoke_live.py https://boilerplate.2plot.dev
 
 Everything here fails silently in production if it isn't checked. A wrong
 canonical host doesn't error, it deindexes; a stub body doesn't error, it
@@ -25,6 +25,7 @@ Only the standard library, so it runs anywhere without an install step.
 
 from __future__ import annotations
 
+import html as html_lib
 import os
 import re
 import sys
@@ -174,6 +175,38 @@ def header(headers: Dict[str, str], name: str) -> str:
     return ""
 
 
+def post(url: str, payload: str = "{}") -> int:
+    """POST for the auth-wiring probe; returns the status, 0 on transport.
+
+    No retry ladder on purpose: a 4xx here IS the answer (invalid token,
+    anonymous signout — both prove the route is registered and callable),
+    so only a transport failure reads as 0.
+    """
+    request = urllib.request.Request(
+        url,
+        data=payload.encode("utf-8"),
+        headers={"User-Agent": BROWSER_UA, "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        # context= must match fetch()'s — this line shipped WITHOUT it, so on
+        # any Python without OS trust-store integration (macOS: the fleet's
+        # whole local-dev half) every auth POST died in the TLS handshake,
+        # returned 0, and the check accused the app of the exact
+        # configure_app regression it exists to detect. CI never saw it
+        # (Linux verifies fine); no wired test can see it (they monkeypatch
+        # post) — hence the SOURCE pin in tests/test_auth_wiring.py.
+        # Found by flexlayout during the F1 kit adoption (154688e).
+        with urllib.request.urlopen(
+            request, timeout=TIMEOUT, context=SSL_CONTEXT
+        ) as resp:
+            return resp.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return 0
+
+
 def check(name: str, passed: bool, detail: str = "", fatal: bool = True) -> None:
     """Record one check. ``fatal=False`` warns instead of failing the deploy.
 
@@ -254,6 +287,28 @@ def main(base: str) -> int:
     print("Core surfaces")
     status, home, _ = fetch(f"{base}/")
     check("home page responds 200", status == 200, f"got {status}")
+
+    # --- Auth wiring: the two-call split, proven from outside --------------
+    # dash-clerk-auth wires either side of Dash(...): register() is the UI
+    # half, configure_app(app) registers /api/auth/* and per-request
+    # identity. A fork that drops the second call still LOOKS signed in
+    # (components render, ClerkJS runs) while every server render reads
+    # signed-out and sign-out never revokes — flexlayout shipped exactly
+    # that, and no local suite can see it because Clerk is off in test
+    # environments. From outside the tell is unambiguous: registered, these
+    # POSTs answer 2xx/4xx; unregistered, the path falls through to Dash's
+    # GET-only page catch-all and answers 405 (or 404). Gated on the
+    # package's inline bootstrap being in the served shell, so clerk-off
+    # hosts skip rather than fail.
+    if "dashClerkAuth" in home:
+        for endpoint in ("session", "signout"):
+            status = post(f"{base}/api/auth/{endpoint}")
+            check(
+                f"POST /api/auth/{endpoint} is a registered route",
+                status not in (0, 404, 405),
+                f"got {status} — the configure_app(app) half of the auth "
+                "wiring is missing: components without a server",
+            )
 
     status, llms, llms_headers = fetch(f"{base}/llms.txt")
     check("/llms.txt responds 200", status == 200, f"got {status}")
@@ -372,6 +427,70 @@ def main(base: str) -> int:
     else:
         check("og:image is not empty", False,
               "an EMPTY og:image renders a blank card — worse than none")
+
+    # --- 3c. Crawler/browser identity parity (the 2.5.0 Tier-B standard) ---
+    # Every SEO defect measured across the fleet in 2026-08 was one bug in
+    # different clothes: the head a crawler received had drifted from the
+    # head a browser received — 4-7 icon links vs zero, "site | page" vs a
+    # bare page name, og:image vs nothing. Content may differ between the
+    # two documents (that is what the prerender is for); identity may not.
+    # This block is the single assertion that would have caught all of it.
+    print("\nCrawler/browser identity parity")
+
+    def identity(html: str) -> Dict[str, object]:
+        # Icons compare as the SET of declared sizes, not a raw link count:
+        # Dash auto-injects one extra favicon link (with a cache-busting
+        # query) into the browser head, so counts differ by one forever
+        # while the actual identity — which sizes a consumer can pick from
+        # — is what the two heads must agree on.
+        icon_links = re.findall(r'<link[^>]+rel="(?:icon|apple-touch-icon)"[^>]*>', html)
+        # Unescape before comparing: one side may write an apostrophe as
+        # &#x27; and the other verbatim — same identity, different escaping.
+        unescape = html_lib.unescape
+        return {
+            "icon sizes": sorted(
+                {s for link in icon_links for s in re.findall(r'sizes="([^"]+)"', link)}
+            ),
+            "title": unescape(
+                (re.findall(r"<title>(.*?)</title>", html, re.S) or [""])[0].strip()
+            ),
+            "og:image": sorted({
+                unescape(u)
+                for u in re.findall(r'property="og:image"[^>]+content="([^"]*)"', html)
+            }),
+            "twitter:card": sorted({
+                unescape(v)
+                for v in re.findall(r'name="twitter:card"[^>]+content="([^"]*)"', html)
+            }),
+        }
+
+    for url in [f"{base}/"] + page_urls[:3]:
+        path = urlparse(url).path or "/"
+        _status, crawler_html, _ = fetch(url, CRAWLER_UA)
+        _status, browser_html, _ = fetch(url, BROWSER_UA)
+        seen_c, seen_b = identity(crawler_html), identity(browser_html)
+        for field in ("icon sizes", "title", "og:image", "twitter:card"):
+            check(
+                f"{path}: crawler and browser agree on {field}",
+                seen_c[field] == seen_b[field] and seen_c[field] not in (0, "", []),
+                f"crawler={seen_c[field]!r} browser={seen_b[field]!r}",
+            )
+        check(
+            f"{path}: crawlers get an icon >=192px",
+            'sizes="192x192"' in crawler_html or 'sizes="512x512"' in crawler_html,
+            "no >=192px icon link in the crawler head — Google's preferred size",
+        )
+
+    # Google falls back to <origin>/favicon.ico when the page it crawled
+    # declares no icon. Dash's page catch-all used to answer it with the app
+    # shell — 200 text/html where an image belongs, a poisoned fallback.
+    status, favicon_body, _ = fetch(f"{base}/favicon.ico")
+    check("/favicon.ico resolves", status == 200, f"got {status}")
+    check(
+        "/favicon.ico is an image, not the app shell",
+        not favicon_body.lstrip().lower().startswith("<!doctype"),
+        "text/html where an image belongs — a poisoned fallback",
+    )
 
     # --- 4. Content negotiation on llms.txt -------------------------------
     # Production is where this can break in ways development cannot show: a
