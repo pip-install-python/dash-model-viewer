@@ -37,11 +37,14 @@ jobs:
     name: deploy to render
     needs: [test]
     runs-on: ubuntu-latest
-    # Long enough for the build-match wait below (up to 60 × 15s) and no
+    # Long enough for the build-match wait below (up to 100 × 15s) and no
     # longer. Without it the job inherits GitHub's six-hour default, which is
     # how a platform that never comes back healthy holds the `cd-production`
-    # concurrency group all day.
-    timeout-minutes: 20
+    # concurrency group all day. Sized for the WORST build, not the median: a
+    # floor bump busts the Docker dependency cache by design, so this
+    # pipeline's most important deploy is also Render's slowest — dash-email's
+    # wait timed out on exactly that class (2026-08-23) at 60 × 15s.
+    timeout-minutes: 30
     environment:
       name: production
       url: https://modelviewer.2plot.dev
@@ -54,7 +57,14 @@ jobs:
           HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           if [ -z "$HOOK" ]; then
-            echo "::notice::RENDER_DEPLOY_HOOK_URL is not set. Skipping the deploy trigger and verifying whatever is currently live."
+            # ::warning, not ::notice — dash-email's finding (2026-08-23):
+            # with no hook AND a push Render's autoDeploy happened to skip,
+            # nothing deployed at all and the build-match wait below timed
+            # out on a deploy nobody had started. The wait refusing was
+            # honest; the quiet notice was why the cause cost a whole run
+            # to see. This is the fleet default state, so it must read as a
+            # condition, not as chatter.
+            echo "::warning::RENDER_DEPLOY_HOOK_URL is not set — this push deploys only if render.yaml autoDeploy fires. The build-match wait below still holds for THIS commit either way."
             echo "deployed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -70,6 +80,8 @@ jobs:
         # because the old build always already passes the old battery; it only
         # shows when a run adds a new surface. Found on muicharts 2026-08-21
         # and fixed at the template — fleet-wide class.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # A bare 200 proves nothing about WHICH build answered: Render swaps
           # instances, and a disk-backed service restarts with a blip, so the
@@ -82,10 +94,24 @@ jobs:
           # should fire exactly once — on the deploy that first carries the
           # field. If it keeps appearing, RENDER_GIT_COMMIT is not reaching the
           # service.
+          #
+          # Fail FAST on supersession (1.6.25; observed live on the template's
+          # 4a1d430, 2026-08-25): when a DIFFERENT build serves, one compare-
+          # API call per distinct sha classifies it. "ahead" — the live build
+          # is a DESCENDANT of this run's sha — means branch HEAD moved past
+          # us and shipped; this run's build can never serve again, so holding
+          # the remaining ~25 minutes turns a race into a timeout. That
+          # commit's own run must certify it. Every other verdict keeps
+          # waiting: "behind" is the previous release still serving mid-build
+          # (the normal case) or a deliberate rollback, and "diverged" or an
+          # unknown/404 (a workflow_dispatch verify against another host,
+          # whose shas this repo has never seen) prove nothing — the honest
+          # generic timeout stays their answer.
           want="${GITHUB_SHA}"
           matched=0
           ok=0
-          for _ in $(seq 1 60); do
+          checked=""
+          for _ in $(seq 1 100); do
             body="$(curl -fsS "$SITE_URL/healthz" 2>/dev/null || true)"
             if [ -n "$body" ]; then
               build="$(printf '%s' "$body" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("build",""))' 2>/dev/null || true)"
@@ -94,6 +120,14 @@ jobs:
                 [ "$matched" -ge 3 ] && break
               elif [ -z "$build" ]; then
                 ok=$((ok + 1))
+              elif [ "$build" != "$checked" ]; then
+                checked="$build"
+                rel="$(gh api "repos/${GITHUB_REPOSITORY}/compare/${want}...${build}" --jq .status 2>/dev/null || true)"
+                if [ "$rel" = "ahead" ]; then
+                  echo "::error::superseded — $build already serves and is a descendant of $want; that commit's own run must certify"
+                  exit 1
+                fi
+                echo "::notice::live build $build is ${rel:-unknown} relative to $want — still waiting for this run's build"
               fi
             fi
             sleep 15
@@ -110,14 +144,18 @@ jobs:
   verify:
     name: verify the live site
     needs: [deploy]
-    if: always() && needs.deploy.result != 'cancelled'
+    # != 'skipped' too (muicharts' fix, adopted 2026-08-24): when deploy is
+    # skipped there is nothing this run shipped to verify — running anyway
+    # certifies whatever build happens to be serving and turns one cause into
+    # two red jobs.
+    if: always() && needs.deploy.result != 'cancelled' && needs.deploy.result != 'skipped'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
 
       # The network battery first: it is the same script, with the same check
       # names, that CI ran against the container this deploy shipped. A name

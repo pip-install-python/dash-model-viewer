@@ -13,7 +13,7 @@
 # build makes the install order explicit and reproducible — and the container
 # battery in CI then tests the same image the service runs, rather than a
 # best-effort reconstruction of it. Same base Python as the service, always:
-# the Dockerfile is FROM python:3.12-slim and PYTHON_VERSION below is 3.12.
+# the Dockerfile is FROM python:3.14-slim and PYTHON_VERSION below is 3.14.x.
 #
 # BLUEPRINT ENV IS NOT SERVICE ENV — read this before debugging anything.
 # Render applies the envVars below on a BLUEPRINT SYNC, not on an autoDeploy
@@ -81,8 +81,22 @@ services:
         generateValue: true
 
       # ---- runtime ------------------------------------------------------
+      # The fleet Python (one minor everywhere: the Dockerfile FROM tag, the
+      # CI site matrix main, this line — tests/test_python_version.py holds
+      # the three together, and /healthz reports what actually serves).
+      # Render's native runtime requires the full X.Y.Z here, so unlike the
+      # image's minor tag the patch needs a human bump now and then; the test
+      # pins only the minor. This service is `runtime: docker`, so the image
+      # is what ships either way — the line still has to agree, because a
+      # revert to a native runtime would otherwise silently deploy a
+      # different interpreter than every gate tested.
+      #
+      # And per the blueprint warning above: this value lands on a Blueprint
+      # SYNC, never on an autoDeploy. A dashboard-side PYTHON_VERSION still
+      # reading 3.12.0 is exactly what the battery's python_matches_declared
+      # check exists to catch.
       - key: PYTHON_VERSION
-        value: "3.12.0"
+        value: "3.14.7"
 
       # flask | fastapi | quart. FastAPI and Quart need the matching dash
       # extra installed and an ASGI start command (uvicorn), so switching this

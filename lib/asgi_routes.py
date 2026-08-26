@@ -65,6 +65,11 @@ class HealthResponse(BaseModel):
     ok: bool = True
     backend: str
     dash_version: str
+    # The serving interpreter (platform.python_version()) — required, not
+    # Optional: every process has one, and an absent field is exactly the
+    # invisibility that let the image/matrix/render.yaml Pythons drift
+    # apart (ops-seat finding, 2026-08-25).
+    python: str
     # Optional because they are environment-dependent, not backend-dependent.
     build: Optional[str] = None
     app: Optional[str] = None

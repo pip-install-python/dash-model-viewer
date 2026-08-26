@@ -15,6 +15,7 @@ reported back as this app being slow.
 from __future__ import annotations
 
 import os
+import platform
 
 import dash
 
@@ -54,7 +55,19 @@ def _resolved_country(headers=None) -> str:
 
 
 def health_payload(backend: str, headers=None) -> dict:
-    payload = {"ok": True, "backend": backend, "dash_version": dash.__version__}
+    payload = {
+        "ok": True,
+        "backend": backend,
+        "dash_version": dash.__version__,
+        # WHICH interpreter is actually serving. Before this field the repo
+        # declared three different Pythons (Dockerfile 3.11.8, matrix 3.12,
+        # render.yaml 3.12.0) and nothing on the wire could contradict any
+        # of them — the drift was invisible to the battery by construction
+        # (ops-seat finding, 2026-08-25). scripts/network_smoke.py asserts
+        # this minor against the Dockerfile's FROM tag, so image and
+        # declaration can no longer part ways silently.
+        "python": platform.python_version(),
+    }
     # Which commit the RUNNING instance was built from. This is what lets CD
     # verify the artifact it shipped rather than whichever build happens to
     # be serving: a Render service with a disk restarts with a blip instead

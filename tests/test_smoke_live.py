@@ -465,3 +465,34 @@ def test_a_broken_local_surface_still_fails_the_deploy(
     monkeypatch.setattr(smoke, "fetch", no_sitemap)
     assert wired.main(BASE) > 0
     assert "FAIL  /sitemap.xml responds 200" in capsys.readouterr().out
+
+
+def test_smoke_live_urlopens_pass_the_ssl_context():
+    """Source pin: every urlopen in smoke_live.py must carry
+    context=SSL_CONTEXT.
+
+    post()'s shipped without it upstream, so on any Python missing OS
+    trust-store integration (macOS — the fleet's whole local-dev half) every
+    auth POST died in the TLS handshake, returned 0, and the check accused
+    the app of the exact configure_app regression it exists to detect. CI
+    never saw it (Linux verifies fine) and no wired test can — the ones in
+    this file hand `fetch` a fake opener, which is precisely the substitution
+    that hides a missing context. A SOURCE pin is the only net with a mesh
+    this fine. Found by flexlayout, F1 kit adoption 2026-08-24.
+
+    This fork has no post() — its smoke battery is read-only — so the pin
+    finds one call today and would still have caught the defect the day a
+    POST arrives. That is the reason the template ships it regardless of
+    whether the fork has anything to fix right now (emojimart's note): the
+    pin is the net, not the repair.
+    """
+    import re
+
+    source = (REPO_ROOT / "scripts" / "smoke_live.py").read_text()
+    calls = re.findall(r"urlopen\((?:[^)]|\n)*?\)", source)
+    assert calls, "no urlopen calls found in smoke_live.py — probe rewritten?"
+    naked = [c for c in calls if "context=SSL_CONTEXT" not in c]
+    assert not naked, (
+        f"urlopen without context=SSL_CONTEXT in smoke_live.py: {naked} — "
+        "on macOS this dies in the handshake and reads as missing auth wiring"
+    )

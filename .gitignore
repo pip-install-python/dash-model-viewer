@@ -283,8 +283,42 @@ JuliaManifest.toml
 # PyCharm project files — machine-specific, and the parent checkout has been
 # burned by these before.
 .idea/
-# Claude Code scratch state (the .md design docs in .claude/ ARE tracked).
-.claude/.cc-writes/
+# Handoff notes for work that belongs in ANOTHER repo — the kickoff docs that
+# start a session elsewhere. Local scratch by design: a task list for
+# 2plot.dev has no business in the checkout of a satellite.
+kickoff/
+
+# Session working documents are LOCAL BY CONVENTION, network-wide: sync
+# reports, handoffs, and kickoff briefs name hosts, topology, and process.
+# Two public fleet repos were caught tracking theirs and clerkhook's staged
+# handoff (naming the full satellite inventory) was one push from public
+# (2026-08-24). The ignore rule is the enforcement, here and in every fork.
+X402-SYNC-REPORT.md
+HANDOFF-*.md
+KICKOFF-*.md
+
+# The .claude/ development kit IS shipped — it is how every fork inherits
+# the network's behavioral contract, skills, and settings (the F1 fabric
+# build, 2026-08-24). Everything else in .claude/ stays local: session
+# scratch, screenshots, settings.local.json (per-seat model overrides),
+# vendored iteration copies. Allow-list, not blanket ignore — a dir-level
+# ignore cannot be re-included beneath, hence the /* form.
+.claude/*
+!.claude/CLAUDE.md
+!.claude/settings.json
+!.claude/skills/
+# Two fork-authored design records, re-included BY NAME (DIVERGENCES.md §1).
+# The old rule here was the inverse — "the .md design docs in .claude/ ARE
+# tracked" — and that inversion is exactly how `.claude/SETTINGS.md` carried
+# a live k2p_ hub key into a public repo on this fork's first commit
+# (2152d49, found 2026-08-26). Default-deny plus two audited names, never
+# default-allow: ARCHITECTURE.md is cited by README.md and by
+# dash_model_viewer/_components.py, and GENERATIVE.md holds the paid-model
+# safety constraints for docs/generative-3d. Both re-audited for secrets at
+# re-inclusion. Anything else new under .claude/ is local unless a human
+# adds a line here and says why.
+!.claude/ARCHITECTURE.md
+!.claude/GENERATIVE.md
 # Runtime analytics ledger — written by lib/analytics_tracker.py at runtime.
 # On Render this lives on the mounted disk (TRAFFIC_ANALYTICS_FILE); locally it
 # lands here. Committing it publishes visitor data and guarantees merge

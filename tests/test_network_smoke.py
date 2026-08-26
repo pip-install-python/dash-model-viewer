@@ -63,6 +63,12 @@ def wired(battery, client, monkeypatch):
 
     monkeypatch.setattr(battery, "fetch", fetch)
     monkeypatch.setattr(battery, "_RESULTS", [])
+    # No declaration in the in-process seat: here the "host" serves from the
+    # suite's own interpreter, which on the matrix's window legs (3.13/3.12)
+    # is deliberately not the fleet Python. The python_matches_declared
+    # check still proves the field EXISTS; holding the artifact to the
+    # Dockerfile's minor is the container and production seats' job.
+    monkeypatch.setattr(battery, "declared_python_minor", lambda: None)
     battery.seen_agents = seen_agents
     return battery
 

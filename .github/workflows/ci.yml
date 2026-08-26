@@ -66,7 +66,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: pip
       - run: pip install flake8
       - name: flake8
@@ -112,6 +112,14 @@ jobs:
           - python: "3.9"
             dash: "4.4.1"
           - python: "3.13"
+            dash: "4.4.1"
+          # The fleet Python (1.6.27). This lane's main deliberately stays on
+          # 3.12 because it sweeps DASH versions, and dash 4.1/4.2/4.3 predate
+          # 3.14 — pinning the sweep to 3.14 would test pip's ability to
+          # resolve old transitive deps on a new interpreter, not this wheel.
+          # The site installs THIS wheel and now serves on 3.14, so the wheel
+          # is tested there on pinned Dash, and pyproject claims 3.14.
+          - python: "3.14"
             dash: "4.4.1"
     steps:
       - uses: actions/checkout@v4
@@ -166,12 +174,23 @@ jobs:
       fail-fast: false
       matrix:
         # Every backend gets a run on the current Python and the pinned Dash...
-        python: ["3.12"]
+        # 3.14 is the ONE fleet Python (1.6.27) — the same minor the Dockerfile
+        # builds on and render.yaml declares, so this matrix main tests the
+        # interpreter production actually runs. The singletons below stay on
+        # their own numbers on purpose: they are range coverage, not the fleet
+        # Python, and tests/test_python_version.py pins only the main.
+        python: ["3.14"]
         backend: [flask, fastapi, quart]
         dash: [""]
         include:
-          # ...the supported Python range gets a run on the default backend...
-          - python: "3.11"
+          # ...the compat window around the fleet Python gets a run on the
+          # default backend. The window MOVES with the fleet Python: it was
+          # 3.11/3.13 around a 3.12 main, and 3.11 left it when the main
+          # became 3.14 (tests/test_python_version.py pins the three-wide
+          # shape). This lane serves the SITE, so its numbers are about the
+          # deployed interpreter — the wheel's own >=3.9 range is the
+          # package-matrix job's business, not this one's.
+          - python: "3.12"
             backend: flask
             dash: ""
           - python: "3.13"
@@ -252,6 +271,13 @@ jobs:
 
       - name: Boot under a production server
         if: matrix.backend == 'flask'
+        env:
+          # This gunicorn serves the MATRIX LEG's interpreter (3.13/3.12 on
+          # the window rows) while the Dockerfile declares the fleet Python —
+          # off-contract for the battery's python_matches_declared check by
+          # design, so it stands down here. The docker job below and CD's
+          # verify leave it armed: there the interpreter IS the artifact.
+          SMOKE_PYTHON_DECLARED: ignore
         run: |
           gunicorn run:server -b 127.0.0.1:8550 --daemon --access-logfile - --error-logfile -
           for _ in $(seq 1 30); do
@@ -342,6 +368,29 @@ jobs:
 
       # The SAME script CD runs against https://modelviewer.2plot.dev, so a
       # failure in CI and a failure in production read identically.
+      # The curl above proves the APP answers. It says nothing about the
+      # HEALTHCHECK instruction, which is what the orchestrator acts on — a
+      # broken probe ships silently while every other step stays green
+      # (emojimart's template-class finding). `none` fails: no HEALTHCHECK at
+      # all means the container is opaque to whatever runs it.
+      - name: Assert Docker's own health verdict
+        run: |
+          for i in $(seq 1 30); do
+            status="$(docker inspect -f '{{.State.Health.Status}}' docs 2>/dev/null || echo none)"
+            if [ "$status" = "healthy" ]; then
+              echo "docker reports healthy after ~$((i*3))s"
+              exit 0
+            fi
+            if [ "$status" = "none" ]; then
+              echo "image has NO HEALTHCHECK — the container is opaque to its orchestrator"
+              exit 1
+            fi
+            sleep 3
+          done
+          echo "HEALTHCHECK never reported healthy (last: $status) — the probe itself is broken:"
+          docker inspect -f '{{json .State.Health}}' docs || true
+          exit 1
+
       - name: Smoke battery against the booted container
         run: python3 scripts/network_smoke.py --base-url http://127.0.0.1:8550
 
@@ -367,7 +416,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
       - run: pip install pip-audit
       # Skip local vendor/ paths — pip-audit can only assess PyPI dists.
       - run: |

@@ -31,13 +31,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 DEMOS: dict[str, dict] = {
-    # The template ships ONE working entry so every fork sees the pattern
-    # live: gate /examples/visualization (control board or `tier: auth`
-    # frontmatter) and its sign-in card renders this chart above the
-    # "Authentication required" copy. Swap in your own hero example.
-    "/examples/visualization": {
-        "module": "docs.data-visualization.basic_chart",
-        "caption": "Live theme-aware chart",
+    # This fork's hero, replacing the template's /examples/visualization —
+    # an endpoint that is a page in the TEMPLATE and on no fork, so every
+    # inheriting site's gate cards rendered demo-less and silent from fork
+    # time (batch-1 finding, excalidraw 2026-08-25; tests/test_auth_demos.py
+    # is the loud surface now).
+    #
+    # AR is the headline of this package — it is in SITE_DESCRIPTION — so the
+    # highest-intent moment on the site should show a real model, spinnable,
+    # with the AR button on it. The module is already imported at boot by the
+    # page's own `.. exec::` directive, so build_demo's import_module is a
+    # sys.modules hit and registers no callbacks after the app starts serving.
+    # Deliberately NOT generative-3d or image-to-3d: one calls a paid model
+    # and the other carves geometry at import — neither belongs behind an
+    # UNAUTHENTICATED card.
+    "/augmented-reality": {
+        "module": "docs.augmented-reality.ar_viewer",
+        "caption": "Live AR-capable viewer",
         "max_height": 420,
     },
 }

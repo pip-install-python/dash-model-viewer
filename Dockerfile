@@ -1,7 +1,15 @@
-# 3.12 to match render.yaml's PYTHON_VERSION. The boilerplate's Dockerfile
-# builds on 3.11.8 while its render.yaml deploys 3.12.0, so its container
-# battery green-lights a Python that production never runs. Same base here as
-# the service, or the gate is testing something else.
+# MINOR tag on purpose — never a patch pin. This line and render.yaml's
+# PYTHON_VERSION have agreed since the gate-wave pass (the argument was and
+# remains: same base here as the service, or the gate is testing something
+# else), but they agreed on 3.12 while the fleet moved to 3.14, and a
+# `3.X.Y-slim` pin would additionally have starved the image of 3.X security
+# releases — the minor tag tracks those through Docker Hub. 3.14 is the ONE
+# fleet Python, decided on evidence (template 1.6.27: full suite plus the
+# docker boot/battery green on python:3.14-slim with dash 4.4.1, dimll
+# >=2.7.1 and cryptography >=50 all importing). tests/test_python_version.py
+# pins that this tag, the CI matrix main and render.yaml all agree, and
+# /healthz reports the serving interpreter so the wire can contradict a
+# stale image rather than inheriting its claim.
 FROM python:3.14-slim
 
 # Unbuffered stdout, or none of the app's print() diagnostics reliably reach
@@ -68,7 +76,14 @@ RUN pip install --no-deps .
 # The 2plot.ai hub's hourly sweep probes /healthz; give the container the same
 # check so an unhealthy process is visible to the orchestrator too.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://localhost:8550/healthz || exit 1
+    CMD curl -fsS http://localhost:${PORT:-8550}/healthz || exit 1
 
 EXPOSE 8550
-CMD ["gunicorn", "run:server", "-b", "0.0.0.0:8550"]
+# Shell form on purpose: exec-form CMD never expands env, so the old
+# ["gunicorn", ..., "0.0.0.0:8550"] hardcoded the port whatever the platform
+# asked for. run.py has honored $PORT since 1.6.8; this lane did not, and
+# only worked on Render because Render port-detects. The default lives at the
+# POINT OF USE (${PORT:-8550}, in both the bind and the probe above) — an
+# ENV PORT=8550 default would look equivalent and is not: a platform that
+# sets PORT empty collapses a bare ${PORT} to `0.0.0.0:` and the bind fails.
+CMD gunicorn run:server -b 0.0.0.0:${PORT:-8550}
