@@ -149,6 +149,43 @@ narrative but a live list of owner-side items this repo still needs
 (disk attachment, the two Clerk allowlists blocking the gate flip).
 When those close, it goes.
 
+### 9. `render.yaml` declares `PYTHON_VERSION` on a `docker` runtime
+
+The fleet rule as of the 2026-08-26 drop branches on runtime:
+`runtime: docker` → `PYTHON_VERSION` **absent**, and pinned absent;
+`runtime: python` → `PYTHON_VERSION` `"3.14.x"`. This service is
+`runtime: docker` (render.yaml, and the reason is divergence 7: the
+image installs the package from this checkout) and declares the
+variable anyway, at `"3.14.7"`.
+
+What that line does here, precisely — measured, not assumed:
+
+- **The deploy ignores it.** Render reads `PYTHON_VERSION` for native
+  Python runtimes; on a docker service the `FROM python:3.14-slim`
+  tag is the interpreter, which is why `/healthz` reports 3.14.7
+  whatever this says.
+- **The battery ignores it.** `network_smoke.declared_python_minor()`
+  parses the Dockerfile's FROM minor, so `python_matches_declared`
+  would stay green if this line read 3.9.
+- **One local test reads it**:
+  `test_python_version.py::test_render_yaml_agrees_with_the_image`.
+
+So it is a declaration with no consumer on the deploy path. It is
+kept for one reason, written at the line itself: a future revert to
+`runtime: python` would otherwise hand the service a default
+interpreter that no gate ever tested, and the failure mode of that
+is silent. The cost of keeping it is the standard cost of inert
+config — someone may one day "fix" the Python version by editing a
+line that cannot change anything.
+
+Recorded rather than resolved: the earlier kickoff's per-fork table
+already named the wave-3 render.yaml rule a divergence for this fork
+and no entry was ever written, which is the gap this closes. Whether
+the fleet prefers the branch rule's `absent` here is an ops-seat
+call, not a fork-local one — flagged in that pass's report. If the
+answer is absent, the change is one env line plus inverting the pin
+above, and this entry retires.
+
 ## Retired
 
 Marked, not deleted — older reports still describe these as live.
