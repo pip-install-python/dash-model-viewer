@@ -177,15 +177,26 @@ path here" — present so the absence is a statement. When the block
 exists it is authoritative; a fork without it gets the conservative
 mention heuristic (over-flags, never restores).
 
-Audited 2026-08-26 against the three consumed specs. All six current
-`sync-verbatim` paths — the three skills, `tests/test_claude_kit.py`,
-`.github/dependabot.yml`, `tests/test_auth_demos.py` — are
-byte-identical to template 1.6.27 here and are NOT listed: the
-template owns them.
+Re-audited 2026-08-26 at template 1.6.29 (`5589318`), the fourth spec
+consumed here. All six current `sync-verbatim` paths — the three
+skills, `tests/test_claude_kit.py`, `.github/dependabot.yml`,
+`tests/test_auth_demos.py` — are byte-identical to the template here
+(two of them refreshed by the F3b fan-out in `608fcea`) and are NOT
+listed: the template owns them.
+
+`scripts/smoke_live.py` is deliberately NOT listed either, though one
+line of it is fork-specific (the usage host in its docstring). Item 6
+is contract-class as of 1.6.29 precisely because each fork's own
+`tests/test_smoke_live.py` stubs its interface, so the fan-out cannot
+reach it; and if a later spec ever promotes it back to cargo, a
+byte-copy would cost this fork one docstring line and gain it every
+upstream fix. Fencing it to protect that line would trade a real
+update channel for a cosmetic one.
 
 One path IS listed, and it is a pre-registration rather than a
 correction. `tests/test_python_version.py` is session-class in
-SYNC-1.6.22-1.6.27 today, so the fan-out cannot touch it yet; the
+SYNC-1.6.22-1.6.29 too (re-checked 2026-08-26: still absent from that
+spec's `sync-verbatim` block), so the fan-out cannot touch it yet; the
 moment a later spec promotes it to block cargo, a byte-copy would
 silently replace this fork's job-scoped pins (divergence 2) with the
 template's single-lane form and hand the next session a red suite to

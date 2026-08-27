@@ -37,6 +37,7 @@ import argparse
 import json
 import os
 import re
+import ssl
 import sys
 import time
 import urllib.error
@@ -45,6 +46,25 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 TIMEOUT = 30
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """Verify certificates via certifi when available.
+
+    Same factory as scripts/smoke_live.py, for the same reason: a Python
+    without OS trust-store integration — macOS, which is the fleet's whole
+    local-dev half — fails the TLS handshake against a perfectly healthy
+    host, and every check below then reads that host as DOWN. Verification
+    stays ON either way; certifi only supplies the CA bundle.
+    """
+    try:
+        import certifi
+    except Exception:  # noqa: BLE001 - not installed: fall back to the OS store
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
+
+
+SSL_CONTEXT = _ssl_context()
 try:
     from lib.constants import INTERNAL_UA as _INTERNAL_UA
 except Exception:  # running outside a repo checkout — keep the token intact
@@ -113,7 +133,9 @@ def fetch(url: str, ua: str = UA, method: str = "GET",
         for k, v in (headers or {}).items():
             req.add_header(k, v)
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
+            with urllib.request.urlopen(
+                req, timeout=timeout, context=SSL_CONTEXT
+            ) as r:
                 return (r.status, {k.lower(): v for k, v in r.headers.items()},
                         r.read().decode("utf-8", "replace"))
         except urllib.error.HTTPError as e:

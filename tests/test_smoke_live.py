@@ -60,10 +60,33 @@ def wired(smoke, client, monkeypatch):
     the network from a unit test would make the suite depend on eleven other
     deployments being up.
     """
-    def fetch(url, user_agent=smoke.BROWSER_UA, accept=None):
+    def fetch(url, user_agent=smoke.BROWSER_UA, accept=None,
+              retries=None, timeout=None):
+        # Signature tracks the real `fetch` — `retries=`/`timeout=` included.
+        # A stub frozen at the pre-wake `(url, user_agent, accept)` shape is
+        # what took 7 of 12 forks red in the 1.6.28 fan-out: wake() calls
+        # `fetch(url, retries=1, timeout=10)` and the stub TypeErrors. Ours
+        # survived only because `wake` is patched out below; accepting the
+        # kwargs means it survives on its own merits.
         if url.startswith(BASE):
             path = url[len(BASE):] or "/"
             response = client.get(path, user_agent=user_agent, accept=accept)
+            # urllib — what the real script fetches with — follows redirects;
+            # the test client does not. The root icon paths 302 to /assets
+            # from dash-improve-my-llms 2.5 on, so follow same-host hops here
+            # or the favicon checks would fail only under test. (Verified on
+            # the wire 2026-08-26: production answers /favicon.ico with
+            # 302 -> /assets/favicon/favicon.ico -> 200 image/vnd.microsoft.icon.)
+            hops = 0
+            while response.status in (301, 302, 307, 308) and hops < 3:
+                location = response.header("Location")
+                if not location:
+                    break
+                if location.startswith("http") and not location.startswith(BASE):
+                    break
+                path = location[len(BASE):] if location.startswith(BASE) else location
+                response = client.get(path, user_agent=user_agent, accept=accept)
+                hops += 1
             return response.status, response.text, response.headers
         if url == OG_IMAGE_URL:
             # The social card lives on the CDN, so it is off-host like the
@@ -480,9 +503,10 @@ def test_smoke_live_urlopens_pass_the_ssl_context():
     that hides a missing context. A SOURCE pin is the only net with a mesh
     this fine. Found by flexlayout, F1 kit adoption 2026-08-24.
 
-    This fork has no post() — its smoke battery is read-only — so the pin
-    finds one call today and would still have caught the defect the day a
-    POST arrives. That is the reason the template ships it regardless of
+    This fork carried no post() until the 1.6.29 item-6 port brought the
+    auth-wiring block across, so the pin guarded a single call site and
+    would still have caught the defect the day a POST arrived. It now
+    covers both — which is the reason the template ships it regardless of
     whether the fork has anything to fix right now (emojimart's note): the
     pin is the net, not the repair.
     """
@@ -491,8 +515,39 @@ def test_smoke_live_urlopens_pass_the_ssl_context():
     source = (REPO_ROOT / "scripts" / "smoke_live.py").read_text()
     calls = re.findall(r"urlopen\((?:[^)]|\n)*?\)", source)
     assert calls, "no urlopen calls found in smoke_live.py — probe rewritten?"
+    # Both call sites, named: the GET ladder in fetch() and the auth POST.
+    # A refactor that collapses them to one would otherwise shrink this
+    # pin's reach silently.
+    assert len(calls) == 2, f"expected fetch()'s GET and post()'s POST, got {len(calls)}"
     naked = [c for c in calls if "context=SSL_CONTEXT" not in c]
     assert not naked, (
         f"urlopen without context=SSL_CONTEXT in smoke_live.py: {naked} — "
         "on macOS this dies in the handshake and reads as missing auth wiring"
     )
+
+
+def test_wake_survives_a_legacy_fetch_stub(smoke, monkeypatch, capsys):
+    """A pre-wake-vintage fetch stub must not TypeError the whole suite.
+
+    Every fork owns a version of THIS file, and the older ones monkeypatch
+    fetch as `(url, user_agent, accept)` without patching wake — the 1.6.28
+    fan-out shipped wake()'s `fetch(url, retries=1, timeout=10)` into that
+    and went red on 7 of 12 forks before a single check ran. wake now
+    falls back to a bare `fetch(url)` when the stub rejects its kwargs, so
+    a template copy landing ahead of the fork's stub update degrades to
+    the fork's own honest check results instead of a suite-wide crash.
+
+    Ported with the 1.6.29 behaviour it pins. This fork's own stub took the
+    kwargs in the same change, so the branch is no longer load-bearing
+    HERE — it is load-bearing for the next fork-shaped copy of this file,
+    and an unpinned fallback is one refactor from being deleted as dead.
+    """
+    monkeypatch.setattr(smoke, "time", _FakeTime())
+
+    def legacy(url, user_agent=smoke.BROWSER_UA, accept=None):
+        assert url.endswith("/healthz")
+        return 200, '{"backend":"flask","ok":true}', {}
+
+    monkeypatch.setattr(smoke, "fetch", legacy)
+    assert smoke.wake("https://x") is True
+    assert "attempt 1" in capsys.readouterr().out

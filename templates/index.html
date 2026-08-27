@@ -145,7 +145,15 @@
          `twitter:image` per page. All five used to be declared here as well,
          which is why every page shipped two of each.
 
-         Only the alt text is left, because Dash omits it. -->
+         BUT: Dash declares them with `property=`, and Twitter reads `name=`
+         — its parser predates the OG convention and never adopted it. So
+         Dash's five are invisible to the one platform they exist for, and
+         the two tags below are the ones actually read: the card type
+         declared with `name=`, and the alt text Dash omits entirely. The
+         rest (title, description, image) falls back to the og:* set, which
+         Twitter does read. Measured 2026-08-14: without this line no page
+         on the network declared a card type any scraper could see. -->
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image:alt" content="dash-model-viewer — interactive 3D models and AR for Dash">
 
     <!-- Optional: Twitter Creator - Your Twitter handle -->
@@ -173,6 +181,9 @@
          declines to offer installation if `name` is empty. -->
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/assets/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/assets/favicon/android-chrome-512x512.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png">
     <link rel="manifest" href="/assets/favicon/site.webmanifest">
     <meta name="apple-mobile-web-app-title" content="dash-model-viewer">
