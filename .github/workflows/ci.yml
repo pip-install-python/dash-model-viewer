@@ -228,7 +228,7 @@ jobs:
           if [ "${{ matrix.backend }}" != "flask" ]; then
             pip install "dash[${{ matrix.backend }}]" httpx
             # The backend extra from PyPI, same floor as requirements.txt.
-            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.7.1"
+            pip install "dash-improve-my-llms[${{ matrix.backend }}]>=2.8.0"
           fi
           pip install pytest pytest-cov
           # An explicit matrix pin overrides requirements.txt, to prove the
@@ -248,11 +248,14 @@ jobs:
 
           # 4.4 floor: 4.3.0's FastAPI backend 500s on every non-root URL.
           assert parts(dash.__version__)[:2] >= (4, 4), dash.__version__
-          # 2.7.1 is the network floor and run.py enforces it fatally: below
-          # it `lastmod=` is swallowed into **kwargs and the sitemap reverts to
-          # invented build dates, and below 2.5.0 `configure_seo` does not
-          # exist at all (crawler identity drops back to the framework's).
-          assert parts(pkg.__version__) >= (2, 7, 1), pkg.__version__
+          # 2.8.0 is the network floor and run.py enforces it fatally: below
+          # it there is no `classify()` and no `on_document_read`, so the
+          # tracker cannot delegate bot classification and the ledger's
+          # `reads` table is never written; below 2.6.0 `lastmod=` is
+          # swallowed into **kwargs and the sitemap reverts to invented build
+          # dates, and below 2.5.0 `configure_seo` does not exist at all
+          # (crawler identity drops back to the framework's).
+          assert parts(pkg.__version__) >= (2, 8, 0), pkg.__version__
           # 21.x carried two request-smuggling CVEs (CVE-2024-6827,
           # CVE-2024-1135). markdown2dash's spurious <22 pin must not win.
           assert parts(gunicorn.__version__)[:2] >= (23, 0), gunicorn.__version__
@@ -329,7 +332,7 @@ jobs:
 
           v = version('dash-improve-my-llms')
           print('dash-improve-my-llms', v)
-          assert parts(v) >= (2, 7, 1), f'expected >=2.7.1 (llms.txt v2 discovery + deduped prerender), image has {v}'
+          assert parts(v) >= (2, 8, 0), f'expected >=2.8.0 (one classifier + the read event), image has {v}'
 
           # markdown2dash installs with --no-deps to dodge its gunicorn<22
           # pin; this assert is what proves the dodge kept working. 21.x

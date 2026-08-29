@@ -186,6 +186,35 @@ call, not a fork-local one — flagged in that pass's report. If the
 answer is absent, the change is one env line plus inverting the pin
 above, and this entry retires.
 
+### 10. `CHANGELOG.md` is the PACKAGE's, so site notes go elsewhere
+
+Sync item 12 says to record its reporting consequence — `human_hits` drops
+and `bot_hits` rises on adoption day — "in your CHANGELOG under Changed".
+The template has no package, so its `CHANGELOG.md` is the site's changelog
+and that instruction fits it exactly. Here the file opens "All notable
+changes to `dash-model-viewer`" and every entry in it is a package entry;
+the docs site's own history has always lived in commit messages and, where
+it needs an owner to act, in `DEPLOY-READINESS.md`. Filing a site-analytics
+note under `[Unreleased]` would tell a PyPI reader that the component
+library changed, which it did not.
+
+So the consequence is recorded in `DEPLOY-READINESS.md` step 11 (owner-
+facing, where the Render Branch flip already had to go) and in the commit
+message. A future spec item asking for a `CHANGELOG.md` note should be read
+the same way: package changes there, site changes in the commit and in
+`DEPLOY-READINESS.md`.
+
+### 11. `cd.yml` promote checkout is `actions/checkout@v4`
+
+Item 13's template shape uses `actions/checkout@v7`. Every other checkout in
+this repo's workflows is `@v4` and Dependabot's actions group manages that
+number here (`.github/dependabot.yml`), so a hand-written `@v7` in one step
+would be a version this repo did not choose, in a file the bot is expected
+to keep uniform. The item's contract is `fetch-depth: 0`, which is a `with:`
+key both majors accept; `tests/test_cd_promotes_release.py` pins the
+fetch-depth and not the action version, so nothing about item 13 depends on
+the difference.
+
 ## Retired
 
 Marked, not deleted — older reports still describe these as live.
@@ -245,3 +274,53 @@ byte-for-byte", and this is one.
 # See divergence 2 — two CI lanes, so the pins here are job-scoped.
 - tests/test_python_version.py
 ```
+
+## Posture
+
+What this host ANSWERS, as measured — never as intended. The hub's F4
+battery seeded these per-host postures from its own table, which is a
+copy of a measurement somebody took once; this block homes them in the
+repo that can keep them true, and the hub reads it instead.
+
+Four keys, all optional. An EMPTY block means "the template defaults" —
+present, so the absence is a statement. `tests/test_claude_kit.py`
+validates the shape (and holds `runtime:` against render.yaml, where the
+repo declares one); nothing validates the numbers but a probe, so
+re-measure when you change what this host serves:
+
+    ai_bots   the status an AI-crawler UA receives per path, measured
+              with a real vendor UA (ClaudeBot, GPTBot — NOT a UA-less
+              curl, which is classified separately). A blocked vendor
+              gets 403 on the browser document while the agent surfaces
+              stay open — that asymmetry is the posture, and it is
+              invisible from a browser.
+    healthz   `full` (the fleet payload: app, backend, build, geo,
+              python, …) or `minimal` (a deliberately reduced body — see
+              clerkhook's recorded divergence; the battery's
+              python_matches_declared skips with notice there).
+    runtime   `docker` or `python` — the Render service runtime, which
+              decides whether PYTHON_VERSION is required or forbidden
+              (sync spec item 5). This host is `docker`, and declares
+              PYTHON_VERSION anyway — divergence 9.
+    deploy    `release-branch` — Render deploys `release`, which only
+              CD writes after a green matrix (sync item 13); `build` on
+              /healthz is HEAD of `release`, and `main` ahead of it is
+              an uncertified push pending. ABSENT reads as `main`:
+              Render watches main and a push deploys before CI has
+              judged it.
+
+Measured on modelviewer.2plot.dev, 2026-08-29, build cf548d0, with
+`curl -A '<ClaudeBot UA>'` per path:
+
+```yaml posture
+ai_bots: {"/": 403, "/llms.txt": 200, "/healthz": 403}
+healthz: full
+runtime: docker
+deploy: release-branch
+```
+
+`deploy: release-branch` is declared by the repo the moment CD's promote
+step lands; the Render **dashboard's** Branch field is the switch if this
+service is not Blueprint-managed, and that flip is an owner step. Until
+it happens the wire still follows `main` while this fence says
+`release` — the report for that pass says which.

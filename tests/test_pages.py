@@ -134,7 +134,7 @@ def test_prerender_rides_the_generic_lane_not_a_ua_gate(client):
             f"{path}: the prerender div carries `hidden` again — "
             "visibility-respecting consumers are back to reading "
             "'Loading...'; the floor first moved (to 2.6.1) for exactly "
-            "this, and sits at >=2.7.1 now"
+            "this, and sits at >=2.8.0 now"
         )
         assert 'data-dimll-prerender="1">document.getElementById' in html, (
             f"{path}: the marked synchronous hide script is missing — "

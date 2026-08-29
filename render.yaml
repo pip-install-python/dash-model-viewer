@@ -1,10 +1,8 @@
 # Render Blueprint — modelviewer.2plot.dev (single web service, docker runtime).
 #
-# Auto-deploys on push to main. Serves the dash-model-viewer documentation.
-#
-# THIS HOST HAS NEVER DEPLOYED. Everything below is authored, not verified
-# against a running service — the owner-side steps in DEPLOY-READINESS.md are
-# what turn it into a live host, and live verification runs after that.
+# Auto-deploys on push to `release` — the branch only CD writes, and only
+# after the matrix is green (sync item 13). Serves the dash-model-viewer
+# documentation.
 #
 # WHY DOCKER AND NOT `runtime: python`
 # ------------------------------------
@@ -38,7 +36,11 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     region: oregon
-    branch: main
+    # `release` is written ONLY by CD (.github/workflows/cd.yml, job `deploy`:
+    # a fast-forward push of the run's sha after the matrix is green). A push
+    # to main is not a deploy. autoDeploy stays on: Render reacting to this
+    # branch IS the mechanism (sync item 13).
+    branch: release
     healthCheckPath: /healthz
     autoDeploy: true
     # Render provisions the certificate once the CNAME resolves. The

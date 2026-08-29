@@ -200,6 +200,48 @@ gate the page that teaches someone to install the package.
 
 ---
 
+## 11. Point Render at `release` — OWNER STEP, added 2026-08-29
+
+The host **is** live now (steps 1–6 happened; the "never deployed" framing at
+the top of this document predates that and is kept only so the ordering above
+still reads). This step is new and still open.
+
+Sync item 13 moved the deploy road: `render.yaml` now declares
+`branch: release`, and `.github/workflows/cd.yml`'s `deploy` job is the only
+thing that writes `release` — a fast-forward push of the run's own sha, after
+the CI matrix is green. A push to `main` is a candidate, not a deploy.
+
+**`render.yaml`'s `branch:` is only authoritative if this service is
+Blueprint-managed.** If it is not, the dashboard's **Branch** field is the
+switch, and only the owner can flip it:
+
+> Render dashboard → `dash-model-viewer-docs` → Settings → Build & Deploy →
+> **Branch**: `main` → `release`.
+
+Do it **after** the first promote step has run green, so `release` exists and
+holds a certified sha. Until the flip, Render still builds `main`: the wire
+follows main while the repo (and `DIVERGENCES.md`'s posture fence) says
+`release`.
+
+How to tell which road the host is on, since the first promoted run cannot
+distinguish them — main and release hold the same sha, so autoDeploy-from-main
+and autoDeploy-from-release produce the same `/healthz`. The discriminating
+observation is **the next push that goes red on main**: `release` must not
+move and the wire must not change.
+
+### The analytics numbers step on the 2.8.0 deploy
+
+Same round, and it is not a defect: `human_hits` **drops** and `bot_hits`
+**rises** on the first day this ships. `lib/analytics_tracker.py` no longer
+carries its own User-Agent list — it delegates to
+`dash_improve_my_llms.classify()` — and UA-less and library clients (`httpx`,
+`Go-http-client`, `node-fetch`, an empty User-Agent) move from the human lane
+to the crawler lane, where they always belonged. The old list also filed
+ClaudeBot, Anthropic's *training* crawler, as "search". The hub's
+day-over-day view will show the step. That is the number becoming true.
+
+---
+
 ## Known gaps, stated plainly
 
 - **Nothing here is live-verified.** The service does not exist yet.
