@@ -386,8 +386,17 @@ runtime: docker
 deploy: release-branch
 ```
 
-`deploy: release-branch` is declared by the repo the moment CD's promote
-step lands; the Render **dashboard's** Branch field is the switch if this
-service is not Blueprint-managed, and that flip is an owner step. Until
-it happens the wire still follows `main` while this fence says
-`release` — the report for that pass says which.
+`deploy: release-branch` is now true on both sides. The repo declared it
+when CD's promote step landed; the Render **dashboard's** Branch field is
+the other half whenever the service is not Blueprint-managed, and the
+owner set it to `release` on 2026-08-30, after three green promotes had
+proved the branch holds only certified shas.
+
+The flip changed nothing observable, and that is the expected result, not
+a non-event: `main`, `release` and `/healthz` all held `9badadd` across
+it, so autoDeploy-from-main and autoDeploy-from-release produce the same
+wire. **The road is still unexercised.** The observation that would
+distinguish them is the first push that goes RED on `main`: `release`
+must not move and `/healthz` must not change. Until that has happened,
+this key records an intent that has been configured, not a behaviour that
+has been measured — say so in any report that leans on it.

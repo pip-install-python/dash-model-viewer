@@ -200,11 +200,17 @@ gate the page that teaches someone to install the package.
 
 ---
 
-## 11. Point Render at `release` — OWNER STEP, added 2026-08-29
+## 11. Point Render at `release` — DONE 2026-08-30
 
 The host **is** live now (steps 1–6 happened; the "never deployed" framing at
 the top of this document predates that and is kept only so the ordering above
-still reads). This step is new and still open.
+still reads).
+
+**The owner set the dashboard's Branch to `release` on 2026-08-30**, after
+three green promotes (`b1bb93b`, `576880d`, `9badadd`) had shown the branch
+receives only certified shas. Kept rather than deleted because the next
+person to stand a service up needs the ordering, and because the last
+paragraph is still an open measurement.
 
 Sync item 13 moved the deploy road: `render.yaml` now declares
 `branch: release`, and `.github/workflows/cd.yml`'s `deploy` job is the only
@@ -219,15 +225,19 @@ switch, and only the owner can flip it:
 > **Branch**: `main` → `release`.
 
 Do it **after** the first promote step has run green, so `release` exists and
-holds a certified sha. Until the flip, Render still builds `main`: the wire
+holds a certified sha. Before the flip, Render still builds `main`: the wire
 follows main while the repo (and `DIVERGENCES.md`'s posture fence) says
 `release`.
 
-How to tell which road the host is on, since the first promoted run cannot
-distinguish them — main and release hold the same sha, so autoDeploy-from-main
-and autoDeploy-from-release produce the same `/healthz`. The discriminating
-observation is **the next push that goes red on main**: `release` must not
-move and the wire must not change.
+**STILL OPEN — the road is configured, not yet measured.** Neither the flip
+nor any run so far can tell the two roads apart: `main`, `release` and
+`/healthz` have held the same sha at every step, so autoDeploy-from-main and
+autoDeploy-from-release produce an identical wire. Measured across the flip
+itself on 2026-08-30: all three at `9badadd` before and after, every path
+200. The discriminating observation is **the next push that goes red on
+main** — `release` must not move and `/healthz` must not change. Whoever
+sees the first red CD run on this host should record that, because it is the
+only thing that turns this from a setting into a fact.
 
 ### The analytics numbers step on the 2.8.0 deploy
 
