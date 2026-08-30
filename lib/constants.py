@@ -190,10 +190,85 @@ OG_IMAGE_ALT = SITE_BRAND
 # back at this subdomain — is a per-package checklist item, not code, and
 # pyproject.toml already holds up its end.
 PUBLISHER = "Pip Install Python LLC"
+
+# ONE constant for the repository. The header's GitHub icon, the footer, the
+# Resources block and JSON-LD `sameAs` all read it (sync item 16): a fork sets
+# it once. muischeduler's icon pointed at the profile while its sameAs named
+# the repo — two truths, one of them wrong.
+GITHUB_URL = "https://github.com/pip-install-python/dash-model-viewer"
+# Two entries here, unlike the template's one: this site documents a PUBLISHED
+# package, so the PyPI project is the second URL that is the same entity, and
+# three properties pointing at each other is the strongest statement of which
+# URL is a package's canonical docs home. The contract is `GITHUB_URL in
+# SAME_AS`, which holds.
 SAME_AS = [
-    "https://github.com/pip-install-python/dash-model-viewer",
+    GITHUB_URL,
     "https://pypi.org/project/dash-model-viewer/",
 ]
+
+# ---------------------------------------------------------------------------
+# Navigation contract (sync item 16) — the parts of the sidebar/top bar that
+# are IDENTICAL on every host come from template code and these constants; the
+# app's own sections come from frontmatter. A fork edits THIS block and its
+# docs' frontmatter, never components/navbar.py.
+# ---------------------------------------------------------------------------
+
+# The app's own sections, in sidebar order. Every docs page declares
+# `category:` in its frontmatter; categories not listed here follow the listed
+# ones, alphabetically. Keep names short — they are sidebar titles.
+#
+# This fork's identity: a reader arrives to put a model on a page (Getting
+# started), then aims the camera at it (Viewing), then wires it to Dash
+# (Interaction), then makes models they do not have (Generating), and only
+# then reads every prop (Reference).
+CATEGORY_ORDER = [
+    "Getting started",
+    "Viewing",
+    "Interaction",
+    "Generating",
+    "Reference",
+]
+
+# Network-wide community links — identical on every host.
+DISCORD_URL = "https://discord.gg/e5s5uHWUHH"
+YOUTUBE_URL = "https://www.youtube.com/@2plotai"
+YOUTUBE_SUBSCRIBE_URL = YOUTUBE_URL + "?sub_confirmation=1"
+DMC_URL = "https://www.dash-mantine-components.com/"
+
+# The upstream project this component wraps — `{"name": ..., "url": ...}` or
+# None. Rendered as the last Resources link when declared. This package is a
+# Dash wrapper around Google's `<model-viewer>` web component; a reader who
+# needs an attribute this wrapper does not surface needs that project's docs,
+# not ours.
+UPSTREAM = {
+    "name": "model-viewer",
+    "url": "https://modelviewer.dev/",
+    "icon": "mdi:cube-outline",
+}
+
+# Dash component packages whose props the generated /api page documents.
+# Empty → /api is not registered. The version badge in the header reads the
+# first entry's __version__.
+API_PACKAGES: list = ["dash_model_viewer"]
+
+
+# The owner's profile — the FOOTER's GitHub link (the repo is the top bar's).
+GITHUB_PROFILE_URL = "https://github.com/pip-install-python"
+
+
+def resources() -> list:
+    """The sidebar's Resources section: THIRD-PARTY ONLY (owner, 2026-08-30).
+    `dmc` and, when a fork declares it, the upstream project. The owner's own
+    links (repo, Discord, YouTube) live in the top bar and the footer, never
+    here; no community.plotly.com; no 2plot.dev (the network is the Other Apps
+    menu)."""
+    items = [
+        {"label": "dmc", "url": DMC_URL, "icon": "ic:baseline-design-services"},
+    ]
+    if UPSTREAM:
+        items.append({"label": UPSTREAM["name"], "url": UPSTREAM["url"],
+                      "icon": UPSTREAM.get("icon", "mdi:open-in-new")})
+    return items
 
 
 def require_owned_base_url(base_url: str = BASE_URL) -> None:

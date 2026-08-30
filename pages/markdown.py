@@ -14,6 +14,7 @@ from pydantic import BaseModel, field_validator
 from lib.ad_client import inject_ad_into_aside
 from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, NAME_CONTENT_MAP
 from lib import gate_layouts, page_tiers, page_visibility
+from lib import aside
 from lib.directives.headings import patch_renderer
 from lib.directives.kwargs import Kwargs
 from lib.directives.llms_copy import LlmsCopy
@@ -37,6 +38,8 @@ class Meta(BaseModel):
     package: str = "dash_pydantic_form"
     category: Optional[str] = None
     icon: Optional[str] = None
+    # Sidebar position within its category (sync item 16); ties break on name.
+    order: int = 1000
     # Who may read this page: public | auth | admin | hidden. Absent means
     # the deployment default (PAGE_DEFAULT_TIER, else public) — see
     # lib/page_tiers.py for the tier model and why the default is open.
@@ -166,6 +169,11 @@ for file in files:
     # Store raw markdown content in NAME_CONTENT_MAP for the LLM copy button.
     NAME_CONTENT_MAP[metadata.name] = content
 
+    # Pages with a `.. toc::` fill the aside; the shell collapses it for
+    # every other page (lib/aside.py — the full-width /changelog).
+    if ".. toc::" in content:
+        aside.register(metadata.endpoint)
+
     layout = parse(content)
 
     # add heading and description to the layout
@@ -209,6 +217,7 @@ for file in files:
         ),
         category=metadata.category,
         icon=metadata.icon,
+        order=metadata.order,
         # Without this Dash infers an image from assets/ and finds `logo.svg` —
         # an SVG, which every social scraper rejects — then emits it ALONGSIDE
         # the og:image in templates/index.html. See lib.constants.OG_IMAGE_URL.

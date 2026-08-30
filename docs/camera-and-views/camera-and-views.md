@@ -2,6 +2,8 @@
 name: Camera and Views
 description: Camera presets, flight between them, and the 230-line clientside example that became 47 lines of Python.
 endpoint: /camera-and-views
+category: Viewing
+order: 1
 package: dash_model_viewer
 icon: mdi:camera-control
 lastmod: 2026-08-08

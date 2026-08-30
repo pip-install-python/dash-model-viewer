@@ -2,6 +2,8 @@
 name: API Reference
 description: Every prop on ModelViewer and Slot, every event payload, and the precedence rules.
 endpoint: /api-reference
+category: Reference
+order: 1
 package: dash_model_viewer
 icon: mdi:code-braces
 lastmod: 2026-08-08

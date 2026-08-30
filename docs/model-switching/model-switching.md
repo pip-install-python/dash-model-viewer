@@ -2,6 +2,8 @@
 name: Model Switching and Variants
 description: Swap the model at runtime, and drive GLTF material variants from a dropdown the viewer populates itself.
 endpoint: /model-switching
+category: Viewing
+order: 2
 package: dash_model_viewer
 icon: mdi:swap-horizontal
 lastmod: 2026-08-08

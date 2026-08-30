@@ -2,6 +2,8 @@
 name: Image to 3D
 description: Upload a picture and get a real .glb — Claude reads the image and chooses the carving parameters, and deterministic code cuts the relief.
 endpoint: /image-to-3d
+category: Generating
+order: 1
 package: dash_model_viewer
 icon: mdi:image-filter-hdr-outline
 lastmod: 2026-08-09

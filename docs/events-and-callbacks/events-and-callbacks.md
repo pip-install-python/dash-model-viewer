@@ -2,6 +2,8 @@
 name: Events and Callbacks
 description: The camera, load state, model dimensions, AR status and hotspot clicks arrive as ordinary Dash props — no clientside callbacks.
 endpoint: /events-and-callbacks
+category: Interaction
+order: 1
 package: dash_model_viewer
 icon: mdi:transit-connection-variant
 lastmod: 2026-08-08

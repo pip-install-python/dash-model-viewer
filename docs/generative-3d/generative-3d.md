@@ -2,6 +2,8 @@
 name: Generative 3D Art
 description: Describe a sculpture and get a real .glb — with Claude as a scene compiler, not a mesh generator, and every triangle built by deterministic Python.
 endpoint: /generative-3d
+category: Generating
+order: 2
 package: dash_model_viewer
 icon: mdi:shape-plus-outline
 lastmod: 2026-08-09

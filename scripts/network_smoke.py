@@ -274,13 +274,18 @@ def satellite_checks(base: str) -> None:
 
         for agent, expected, since in (
             ("OAI-SearchBot", "Allow: /", "2.3.2"),
-            ("ClaudeBot", "Disallow: /", "2.3.3"),
             ("Claude-User", "Allow: /", "2.3.3"),
             ("Claude-SearchBot", "Allow: /", "2.3.3"),
         ):
             got = rule(agent)
             expect(got == expected,
                    f"{agent} -> {got!r}, expected {expected!r}: pre-{since} artifact")
+        # Posture, not artifact (sync item 15): no training stanza is emitted
+        # at all when the wall is retired; absent or Allow is the allow shape.
+        for agent in ("ClaudeBot", "GPTBot"):
+            marker = f"User-agent: {agent}"
+            walled = marker in lines and lines[lines.index(marker) + 1] == "Disallow: /"
+            expect(not walled, f"{agent} still Disallowed: the posture flip has not landed")
         expect(any(ln.startswith("Sitemap:") for ln in lines), "Sitemap line missing")
 
     def sitemap_absolute_and_on_this_host():

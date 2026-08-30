@@ -3,8 +3,9 @@ from dash import Output, Input, State, clientside_callback, html, get_asset_url
 from dash_iconify import DashIconify
 
 from components.backend_badge import create_backend_badge
+from components.navbar import search_data
 from lib.backend import get_backend_info
-from lib.constants import SITE_SHORT_NAME
+from lib.constants import API_PACKAGES, BASE_URL, GITHUB_URL, SITE_SHORT_NAME
 
 
 def create_clerk_avatar():
@@ -55,8 +56,92 @@ def create_link(icon, href, label):
     )
 
 
+def create_other_apps_menu():
+    """*Other Apps* — the network, from ONE registry (sync item 16).
+
+    A hover menu in the top bar (the 2plot.dev shape the owner named as the
+    reference), populated from lib.network_directory: the PRIMARY entries of
+    PEERS + AFFILIATED, this app omitted, labelled by domain. The sidebar
+    carries no network section any more — this is the only place the network
+    is listed, so it cannot be listed twice.
+    """
+    from lib.network_directory import other_apps_for
+
+    return dmc.Menu(
+        [
+            dmc.MenuTarget(
+                dmc.Button(
+                    "Other Apps",
+                    variant="subtle",
+                    color="gray",
+                    size="sm",
+                    leftSection=DashIconify(icon="svg-spinners:blocks-scale", width=18),
+                    visibleFrom="md",
+                    id="other-apps-menu-target",
+                )
+            ),
+            dmc.MenuDropdown(
+                [
+                    dmc.MenuItem(
+                        entry["label"],
+                        leftSection=DashIconify(icon=entry["icon"], width=16),
+                        href=entry["url"],
+                        target="_blank",
+                    )
+                    for entry in other_apps_for(BASE_URL)
+                ],
+                id="other-apps-menu",
+                # Solid, themed panel (the visual pass): the seat found the
+                # dropdown near-transparent with washed-out items in dark mode.
+                styles={"dropdown": {
+                    "backgroundColor": "var(--mantine-color-body)",
+                    "border": "1px solid var(--mantine-color-default-border)",
+                    "boxShadow": "var(--mantine-shadow-md)",
+                }},
+            ),
+        ],
+        trigger="hover",
+        openDelay=100,
+        closeDelay=200,
+    )
+
+
+def _package_version():
+    """The documented component package's version, or None."""
+    if not API_PACKAGES:
+        return None
+    try:
+        from importlib.metadata import version
+
+        return version(API_PACKAGES[0].replace("_", "-"))
+    except Exception:
+        try:
+            import importlib
+
+            return getattr(importlib.import_module(API_PACKAGES[0]), "__version__", None)
+        except Exception:
+            return None
+
+
+def create_version_badge():
+    """`v<version>` of the documented package, when the fork declares one."""
+    v = _package_version()
+    if not v:
+        return None
+    return dmc.Badge(
+        f"v{v}",
+        variant="light",
+        color="gray",
+        radius="sm",
+        styles={"root": {"textTransform": "none", "fontWeight": 600}},
+        **{"aria-label": f"{API_PACKAGES[0]} version {v}"},
+    )
+
+
 def create_search(data):
-    """Create searchable dropdown for component navigation"""
+    """Searchable dropdown for page navigation — the sidebar's pages and
+    nothing else (never /admin/*, never hidden-tier; components/navbar
+    decides)."""
     return dmc.Select(
         id="select-component",
         placeholder="Search pages...",
@@ -66,13 +151,10 @@ def create_search(data):
         size="sm",
         nothingFoundMessage="No pages found",
         leftSection=DashIconify(icon="mingcute:search-3-line", width=18),
-        data=[
-            {"label": component["name"], "value": component["path"]}
-            for component in data
-            if component["name"] not in ["Home", "Not found 404"]
-        ],
+        data=search_data(data),
         visibleFrom="sm",
         comboboxProps={"zIndex": 2000},
+        **{"aria-label": "Search pages"},
         styles={
             "input": {
                 "borderColor": "var(--mantine-color-gray-4)",
@@ -183,15 +265,18 @@ def create_header(data):
                 ),
 
                 # Right section: Backend badge + OpenAPI (fastapi only) +
-                # Search + GitHub + Theme toggle + Clerk avatar (when on)
+                # package version + Search + Other Apps + GitHub +
+                # Theme toggle + Clerk avatar (when on)
                 dmc.Group(
                     [
                         dmc.Box(create_backend_badge(), visibleFrom="sm"),
                         dmc.Box(_create_openapi_link(), visibleFrom="md"),
+                        dmc.Box(create_version_badge(), visibleFrom="sm"),
                         create_search(data),
+                        create_other_apps_menu(),
                         create_link(
                             "radix-icons:github-logo",
-                            "https://github.com/pip-install-python/dash-model-viewer",
+                            GITHUB_URL,
                             "View dash-model-viewer on GitHub",
                         ),
                         dmc.ActionIcon(

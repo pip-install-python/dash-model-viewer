@@ -19,7 +19,13 @@ PKG = REPO / "dash_model_viewer"
 
 # Directories that legitimately contain third-party or throwaway content.
 SKIP_DIRS = {".git", ".venv", "venv", "node_modules", "__pycache__", "build",
-             "dist", ".idea", ".pytest_cache", "assets", "usage_tests"}
+             "dist", ".idea", ".pytest_cache", "assets", "usage_tests",
+             # tests/fixtures holds a FAKE Dash component package — a
+             # metadata.json written by hand so lib/api_reference's
+             # metadata.json path stays exercised on a repo whose own package
+             # deliberately has none. It is an input to a test, never an
+             # artifact of a generator, and this guard is about the latter.
+             "fixtures"}
 
 
 def _walk(root: pathlib.Path):

@@ -2,11 +2,13 @@ from pathlib import Path
 
 import dash_mantine_components as dmc
 import frontmatter
-from dash import dcc, register_page
+from dash import register_page
+from markdown2dash import Admonition, Divider, Image, create_parser
 
 import dash_model_viewer as dmv
 from lib.constants import OG_IMAGE_URL, PAGE_TITLE_PREFIX, SITE_DESCRIPTION
 from lib.demo_models import ASTRONAUT
+from lib.directives.headings import patch_renderer
 from lib.versions import substitute_versions
 
 register_page(
@@ -64,14 +66,13 @@ layout = dmc.Container(
     id="m2d-page-home",
     size="lg",
     py="xl",
+    # markdown2dash, not dcc.Markdown (the fleet's no-`dcc` rule, sync item
+    # 16): the same renderer the docs pages use, so home and docs share one
+    # typography and one set of DMC components. patch_renderer() also adds the
+    # inline-image renderer markdown2dash lacks.
     children=[
         dmc.Paper(hero, withBorder=True, radius="md", p=0, mb="xl",
                   style={"overflow": "hidden"}),
-        dcc.Markdown(
-            content,
-            style={
-                "maxWidth": "none",  # Allow Container to control width
-            },
-        ),
+        (patch_renderer(), create_parser([Admonition(), Divider(), Image()])(content))[1],
     ],
 )

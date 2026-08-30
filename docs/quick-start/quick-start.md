@@ -2,6 +2,8 @@
 name: Quick Start
 description: Install the package, put a 3D model on the page, and understand what got injected.
 endpoint: /quick-start
+category: Getting started
+order: 1
 package: dash_model_viewer
 icon: mdi:cube-outline
 lastmod: 2026-08-08

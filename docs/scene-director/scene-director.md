@@ -2,6 +2,8 @@
 name: Scene Director
 description: Describe a shot in plain language and let Claude stage it — grounded in the model's measured geometry, then clamped before anything reaches the browser.
 endpoint: /scene-director
+category: Generating
+order: 3
 package: dash_model_viewer
 icon: mdi:movie-open-outline
 lastmod: 2026-08-08

@@ -83,3 +83,16 @@ def patch_renderer() -> None:
 
     heading._ddb_patched = True
     m2d_renderer.DashRenderer.heading = heading
+
+    # Inline images (`![alt](src)`): markdown2dash defines no `image`, so
+    # mistune's HTML fallback runs and raises on the DMC child list (found
+    # when pages/home.py moved off dcc.Markdown, 1.6.38). Rendered as a
+    # plain <img> with the alt text — a decorative shield or a hero image,
+    # never a layout component.
+    def image(self, text, url, title=None, **attrs):
+        from dash import html
+
+        return html.Img(src=url, alt=plain_text(text), title=title,
+                        style={"maxWidth": "100%", "height": "auto"})
+
+    m2d_renderer.DashRenderer.image = image

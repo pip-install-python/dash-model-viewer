@@ -343,16 +343,30 @@ app._base_url = BASE_URL
 # lib/network_directory.py — one definition, imported by every satellite.
 network_directory.apply(BASE_URL)
 
-# Configure bot management policies — the balanced default this project
-# documents: block training crawlers, allow AI search citations and
-# traditional search. As of dash-improve-my-llms 2.3.3 the buckets are
-# correct per vendor: ClaudeBot (Anthropic's *training* crawler) sits in the
-# training block, while the user-triggered and search fetchers Claude-User /
-# Claude-SearchBot are allowed alongside ChatGPT-User / OAI-SearchBot /
-# PerplexityBot. With block_ai_training=False the training bucket is never
-# emitted at all, which silently allows training — not "balanced".
+# Crawler posture — THE WALL IS RETIRED (sync item 15, Round 3.4, owner
+# decision 2026-08-29). Until now this host blocked the AI-training crawlers
+# (GPTBot, ClaudeBot, CCBot, …): robots.txt said Disallow and the package's
+# middleware answered 403 on the browser document and /healthz, while the
+# corpus (/llms.txt and the tiers) stayed open — a wall that decided by
+# vendor class what nobody could account for. The ledger changed that: since
+# the 2.8.0 floor every corpus read is a row (tier, vendor, verified, bytes)
+# and the hub reconciles it against the wire. A read that is recorded and
+# priceable does not need a wall; it needs a policy. So training crawlers are
+# ALLOWED by default, the same as search fetchers and traditional bots, and
+# the per-vendor knob is the tool from here on — block or meter ONE vendor by
+# name when its ledger rows justify it, never the whole class:
+#
+#     vendor_policy={"bytespider": "block", "gptbot": "meter"}
+#
+# (2.3.3's per-vendor buckets still matter: they are what makes a per-vendor
+# line mean the vendor it names.) Measured here before the flip, 2026-08-30:
+# ClaudeBot and GPTBot both got 403 / 200 / 403 on `/`, `/llms.txt`,
+# `/healthz` — identical in-process and on the wire (a 318-byte denial body
+# both ways), so every 403 on this host is the app's and there is no edge
+# wall to narrow. A fork whose posture fence declares ai_bots 403 by design
+# keeps block_ai_training=True and says so in its DIVERGENCES.md.
 app._robots_config = RobotsConfig(
-    block_ai_training=True,       # Disallow GPTBot, ClaudeBot, CCBot, etc.
+    block_ai_training=False,      # training crawlers allowed; the ledger records every read
     allow_ai_search=True,         # Allow Claude-User/-SearchBot, ChatGPT-User, ...
     allow_traditional=True,       # Allow Googlebot, Bingbot, etc.
     crawl_delay=10,

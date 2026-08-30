@@ -2,8 +2,9 @@
 name: Benchmark
 description: Run one prompt across several models, efforts or token budgets at once and compare the sculptures side by side.
 endpoint: /benchmark
+category: Reference
+order: 3
 package: dash_model_viewer
-category: Advanced
 icon: mdi:chart-box-outline
 lastmod: 2026-08-09
 ---

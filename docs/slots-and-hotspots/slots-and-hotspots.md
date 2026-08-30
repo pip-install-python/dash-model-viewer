@@ -2,6 +2,8 @@
 name: Slots and Hotspots
 description: Anchor any Dash component to a point on the model — and why hotspots used to be a list of dictionaries.
 endpoint: /slots-and-hotspots
+category: Viewing
+order: 3
 package: dash_model_viewer
 icon: mdi:map-marker-radius-outline
 lastmod: 2026-08-08

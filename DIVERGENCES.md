@@ -215,6 +215,53 @@ key both majors accept; `tests/test_cd_promotes_release.py` pins the
 fetch-depth and not the action version, so nothing about item 13 depends on
 the difference.
 
+### 12. `lib/api_reference.py` reads a docstring, because there is no `metadata.json`
+
+Sync item 16 contract (7) generates `/api` from "the installed component
+package's metadata (`metadata.json` / `_prop_names` + docstrings)". This
+package ships **neither**: the 1.0.0 rebuild removed the generator, the
+webpack build and `package.json` (`.claude/ARCHITECTURE.md`), and
+`tests/test_no_regeneration.py` fails if any of them return. The template's
+`load_package()` returns `[]` for such a package, so `/api` rendered a
+569-byte empty shell — which the every-page crawler-body sweep caught.
+
+Ported, not abandoned: `_load_from_python()` reads the exported `Component`
+subclasses' `__init__` signature (type, default, required) and their
+docstrings' `Keyword arguments:` block (the description) — the same four
+columns from the two sources this package actually has, and the same block
+format a generated class carries. `metadata.json` is a mechanism; one table
+per component with prop · type · default · description is the contract, and
+that holds: 32 props on `ModelViewer`, 6 on `Slot`.
+
+`tests/fixtures/fake_dash_pkg/` (the template's fixture, which pins the
+metadata.json path) is exempted in `tests/test_no_regeneration.py`'s
+`SKIP_DIRS` — it is an INPUT to a test, never a generator's output, and the
+guard is about the latter.
+
+One more line differs and it is a template DEFECT, reported to the seat, not
+a divergence to keep: `as_markdown()` escaped `|` in the description cell
+only, so a union type (`string | dict`) or an enum default (`'auto' |
+'fixed'`) silently splits the Markdown row into extra columns. Every cell is
+escaped here. The template has the same bug; it is invisible until a package
+has a union-typed prop, and this one has several.
+
+### 13. The nav-contract tests carry this fork's branch, not the template's
+
+`tests/test_nav_contract.py` is contract-class this round, and two of its
+pins are template-shaped by construction:
+
+- `test_api_page_is_not_registered_when_no_package_is_declared` asserts
+  `API_PACKAGES == []`. This site documents `dash_model_viewer`, so the
+  contract's OTHER branch is the one that holds: the replacement asserts the
+  page registers, plus a second test pinning divergence 12's source.
+- the aside and positive-control pins name template pages
+  (`/backend-comparison`, `/getting-started`); they name `/quick-start` and
+  `/api-reference` here. Same for `tests/test_excluded_links_hidden.py`,
+  whose positive control exists precisely so an empty sitemap cannot pass
+  the admin-leak assertions vacuously — it has to name a page this host has.
+
+Everything else in both files is the template's, byte for byte.
+
 ## Retired
 
 Marked, not deleted — older reports still describe these as live.
@@ -309,10 +356,32 @@ re-measure when you change what this host serves:
               Render watches main and a push deploys before CI has
               judged it.
 
-Measured on modelviewer.2plot.dev, 2026-08-29, build cf548d0, with
-`curl -A '<ClaudeBot UA>'` per path:
+Measured on modelviewer.2plot.dev, 2026-08-30T14:15Z, build cf548d0 —
+the INTERIM reading of the posture flip (sync item 15, Round 3.4). This
+is what the wire answered BEFORE this release deployed, with the
+ClaudeBot UA (`Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko;
+compatible; ClaudeBot/1.0; +claudebot@anthropic.com)`) and the GPTBot UA
+(`…compatible; GPTBot/1.2; +https://openai.com/gptbot`), identical for
+both: `/` 403, `/llms.txt` 200, `/healthz` 403.
+
+**There is no edge wall on this host.** The same six probes run
+in-process against `run.py` at build cf548d0 answered the same
+403/200/403, with the same 318-byte denial body — so every 403 here was
+the app's `block_ai_training`, not a Cloudflare rule. (The fleet drop
+had framed it as two walls; the canary corrected that the same night,
+and the owner has since confirmed the WAF AI-bot feature is
+Enterprise-only on this plan, so no such rule exists anywhere in the
+network.) In-process with the flag flipped, this release answers
+200/200/200 for both UAs — a 13,637-byte crawler document on `/` — and
+robots.txt emits no training stanza at all.
+
+Expected on the wire once this deploys: `{"/": 200, "/llms.txt": 200,
+"/healthz": 200}`. Re-measure and re-date the block then; until then the
+numbers below are what the host answers and are not what it intends.
 
 ```yaml posture
+# interim (2026-08-30T14:15Z, build cf548d0, before this release deployed)
+# — see above; in-process at this HEAD the same probes are 200/200/200
 ai_bots: {"/": 403, "/llms.txt": 200, "/healthz": 403}
 healthz: full
 runtime: docker

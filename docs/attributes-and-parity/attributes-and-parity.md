@@ -2,6 +2,8 @@
 name: Attributes and Parity
 description: Reach every model-viewer attribute — including ones added upstream after this release — without waiting for a new version of this package.
 endpoint: /attributes-and-parity
+category: Reference
+order: 2
 package: dash_model_viewer
 icon: mdi:tune-variant
 lastmod: 2026-08-08
