@@ -70,9 +70,21 @@ layout = dmc.Container(
     # 16): the same renderer the docs pages use, so home and docs share one
     # typography and one set of DMC components. patch_renderer() also adds the
     # inline-image renderer markdown2dash lacks.
+    #
+    # SPLATTED, not nested. `create_parser(...)(content)` returns a LIST, and
+    # the template assigns that list AS `children`. This page prepends a hero,
+    # so the obvious `children=[hero, parsed]` puts a list INSIDE the children
+    # list — and Dash's renderer does not descend into a nested list: every
+    # component in it reaches React as a raw `{props, type, namespace}` object
+    # and React refuses it (Minified error #31), blanking the whole page while
+    # the header and footer render normally. Measured on the wire at 576880d:
+    # /_dash-update-component returned `children: [Paper, ARRAY len 32]`, the
+    # only nested array on any page of this site, and the console carried 20
+    # copies of #31. Docs pages never hit it because pages/markdown.py assigns
+    # the parsed list directly.
     children=[
         dmc.Paper(hero, withBorder=True, radius="md", p=0, mb="xl",
                   style={"overflow": "hidden"}),
-        (patch_renderer(), create_parser([Admonition(), Divider(), Image()])(content))[1],
+        *(patch_renderer(), create_parser([Admonition(), Divider(), Image()])(content))[1],
     ],
 )

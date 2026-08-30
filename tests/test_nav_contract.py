@@ -354,3 +354,45 @@ def test_other_apps_dropdown_is_solid_and_every_primary_app_has_an_icon(app_modu
     assert dropdown.styles["dropdown"]["backgroundColor"]
     for url in PRIMARY:
         assert ICONS.get(url) not in (None, "mdi:web"), f"{url} has no icon"
+
+
+def test_no_page_layout_nests_a_list_inside_children(app_module):
+    """A list INSIDE a children list is invisible to Dash's renderer.
+
+    Every component in the inner list reaches React as a raw
+    `{props, type, namespace}` object; React refuses it with Minified error
+    #31 and the whole page renders blank while the shell around it is fine.
+    Measured on the wire at 576880d: pages/home.py built
+    `children=[Paper, <the parsed markdown list>]` — the only nested array on
+    the site — and the console carried 20 copies of #31 with an empty
+    `_pages_content`. The fix is a splat; this pin is the general form,
+    because nothing else in the suite renders React and a blank page is
+    exactly what a server-side test cannot see.
+    """
+    import dash
+
+    from dash.development.base_component import Component
+
+    def nested(node, path):
+        bad = []
+        if isinstance(node, Component):
+            children = getattr(node, "children", None)
+            if isinstance(children, (list, tuple)):
+                for i, child in enumerate(children):
+                    if isinstance(child, (list, tuple)):
+                        bad.append(f"{path}.{type(node).__name__}.children[{i}]")
+                    bad += nested(child, f"{path}.{type(node).__name__}")
+            else:
+                bad += nested(children, f"{path}.{type(node).__name__}")
+        elif isinstance(node, (list, tuple)):
+            for child in node:
+                bad += nested(child, path)
+        return bad
+
+    offenders = []
+    for page in dash.page_registry.values():
+        layout = page["layout"]
+        if callable(layout):
+            continue  # gated/dynamic layouts are exercised by their own tests
+        offenders += nested(layout, page["path"])
+    assert offenders == [], f"nested list inside children: {offenders}"
