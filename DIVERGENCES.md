@@ -356,33 +356,31 @@ re-measure when you change what this host serves:
               Render watches main and a push deploys before CI has
               judged it.
 
-Measured on modelviewer.2plot.dev, 2026-08-30T14:15Z, build cf548d0 —
-the INTERIM reading of the posture flip (sync item 15, Round 3.4). This
-is what the wire answered BEFORE this release deployed, with the
-ClaudeBot UA (`Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko;
-compatible; ClaudeBot/1.0; +claudebot@anthropic.com)`) and the GPTBot UA
-(`…compatible; GPTBot/1.2; +https://openai.com/gptbot`), identical for
-both: `/` 403, `/llms.txt` 200, `/healthz` 403.
+Measured on modelviewer.2plot.dev, 2026-08-30T17:38Z, build b1bb93b —
+the posture flip (sync item 15, Round 3.4) LANDED. With the ClaudeBot UA
+(`Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible;
+ClaudeBot/1.0; +claudebot@anthropic.com)`) and the GPTBot UA
+(`…compatible; GPTBot/1.2; +https://openai.com/gptbot`), byte-for-byte
+identical for both: `/` 200 (14,065 B, the crawler document),
+`/llms.txt` 200 (14,288 B), `/healthz` 200 (215 B). robots.txt carries
+no `User-agent: GPTBot`/`ClaudeBot`/`CCBot` stanza and no `Disallow: /`
+anywhere — with `block_ai_training=False` the package emits no training
+stanza at all, which is the allow shape.
 
-**There is no edge wall on this host.** The same six probes run
-in-process against `run.py` at build cf548d0 answered the same
-403/200/403, with the same 318-byte denial body — so every 403 here was
-the app's `block_ai_training`, not a Cloudflare rule. (The fleet drop
-had framed it as two walls; the canary corrected that the same night,
-and the owner has since confirmed the WAF AI-bot feature is
-Enterprise-only on this plan, so no such rule exists anywhere in the
-network.) In-process with the flag flipped, this release answers
-200/200/200 for both UAs — a 13,637-byte crawler document on `/` — and
-robots.txt emits no training stanza at all.
-
-Expected on the wire once this deploys: `{"/": 200, "/llms.txt": 200,
-"/healthz": 200}`. Re-measure and re-date the block then; until then the
-numbers below are what the host answers and are not what it intends.
+**There is no edge wall on this host**, and this release is what proves
+it. The reading before it (2026-08-30T14:15Z, build cf548d0) was
+403/200/403 on the wire AND in-process against the same build, with the
+same 318-byte denial body both ways — so every 403 here was the app's
+`block_ai_training`, and flipping one flag opened all three paths with
+no Cloudflare edit. The fleet drop had framed it as two walls, the app's
+and an edge rule on `/`; the canary corrected that the same night, and
+the owner has since confirmed the WAF AI-bot feature is Enterprise-only
+on this plan, so no such rule exists anywhere in the network. History
+kept because it corrects a framing, not because the numbers still apply.
 
 ```yaml posture
-# interim (2026-08-30T14:15Z, build cf548d0, before this release deployed)
-# — see above; in-process at this HEAD the same probes are 200/200/200
-ai_bots: {"/": 403, "/llms.txt": 200, "/healthz": 403}
+# 2026-08-30T17:38Z, build b1bb93b, ClaudeBot and GPTBot identical
+ai_bots: {"/": 200, "/llms.txt": 200, "/healthz": 200}
 healthz: full
 runtime: docker
 deploy: release-branch
