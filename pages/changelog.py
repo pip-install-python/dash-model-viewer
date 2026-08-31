@@ -68,6 +68,31 @@ def _is_version(label: str) -> bool:
     return bool(re.fullmatch(r"\d+(\.\d+)*", label))
 
 
+def _is_release_label(label: str) -> bool:
+    """Is an UNBRACKETED `## …` a release heading, or just prose?
+
+    1.6.41 widened the heading match to accept pannellum's unbracketed
+    `## 2.0.0 — date`, and free text came through with it (muicharts,
+    2026-08-31): its `## Component License Requirements` parsed as a
+    release, rendered a Timeline card badged with that whole sentence, and
+    made /changelog claim 15 releases where there are 14. This repo had the
+    same defect and did not notice — `## Migration Guides` and `## Support`
+    at the foot of its own CHANGELOG.md were two phantom releases. The
+    fleet-shapes fixture could not catch it: it holds only release
+    headings, so it never asked what a NON-release heading does.
+
+    Brackets are the Keep a Changelog convention and are trusted as intent.
+    Unbracketed, a label must LOOK like a release: a version, an ISO date,
+    or Unreleased.
+    """
+    label = label.strip()
+    return bool(
+        _is_version(label.lstrip("vV"))
+        or re.fullmatch(r"\d{4}-\d{2}-\d{2}", label)
+        or label.lower() == "unreleased"
+    )
+
+
 def parse_changelog(path: Path = CHANGELOG_PATH) -> list[dict]:
     """``[{version, date, sections: {name: [items]}}]`` in file order."""
     if not path.exists():
@@ -95,7 +120,16 @@ def parse_changelog(path: Path = CHANGELOG_PATH) -> list[dict]:
         #   ## [Unreleased]
         # Parsed as [?label]? (sep)? rest?, with the ISO date taken from
         # wherever it sits and the leftover kept as a note.
-        vm = re.match(r"^## \[?(?P<label>[^\]#\n]+?)\]?(?:\s+[-–—]\s+(?P<rest>.+?))?\s*$", line)
+        # `(?(open)\])` — the closing bracket is required only where an
+        # opening one matched, so bracketed and bare headings stay distinct
+        # and `_is_release_label` can hold the bare ones to a higher bar.
+        vm = re.match(
+            r"^## (?P<open>\[)?(?P<label>[^\]#\n]+?)(?(open)\])"
+            r"(?:\s+[-–—]\s+(?P<rest>.+?))?\s*$",
+            line,
+        )
+        if vm and not vm.group("open") and not _is_release_label(vm.group("label")):
+            vm = None  # prose section, not a release
         if vm:
             close_section()
             if current is not None:

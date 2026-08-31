@@ -15,9 +15,24 @@ empty `/api` answering 200, and this file pins the two that can happen here:
      by a directive) but the lane-parity pin here is written the way the
      item asks anyway: assert ROWS and row CONTENT, never headings.
 
-`tests/test_nav_contract.py` is byte-identical to the template's and carries
-neither pin — the template documents no component package, so it has nothing
-to point them at. Reported to the seat as a gap; this file is the fork half.
+WHAT THIS ADDS TO THE TEMPLATE'S OWN PIN. `tests/test_nav_contract.py`
+::test_api_reference_falls_back_to_the_committed_extract_then_docstrings
+already drives the whole ladder — a fixture package with no metadata.json,
+and a synthesized slim extract in tmp_path — so the MECHANISM is pinned
+upstream and every fork gets it by copying. (I reported it missing; I was
+wrong, and the seat corrected it.) What that test cannot know is this
+package: these four pins are about the real `dash_model_viewer` and the real
+`/api`, and each of them can fail while the fixture pins stay green —
+
+  the shipped components come back (32 + 8 props), and no metadata.json
+      exists to mask a regression in the docstring reader;
+  the COMMITTED extract still agrees with the docstrings it was built from —
+      it is a second source of truth that `load_package` PREFERS, so a prop
+      change that skips `scripts/build_api_metadata.py` silently stops
+      reaching the page;
+  the extract reaches the WHEEL, since the site installs this package with
+      `pip install --no-deps .`;
+  `/api` carries the rows in both lanes, by row content.
 """
 
 from __future__ import annotations

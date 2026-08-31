@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 import pytest
 
-from conftest import BROWSER_ACCEPT, CRAWLER_UA
+from conftest import BROWSER_ACCEPT, BROWSER_UA, CRAWLER_UA
 from lib import network_directory as nd
 from lib.constants import BASE_URL
 
@@ -166,6 +166,10 @@ def test_healthz_is_live_not_a_snapshot(monkeypatch):
     stub = SimpleNamespace(server=Flask("healthz_snapshot_pin"))
     register_health_route(stub, "flask")
     probe = stub.server.test_client()
+    # A bare Flask app with only /healthz has no dimll middleware and so no
+    # lane to get wrong — but an exception carved for "this one is a stub" is
+    # how the next stub that isn't one gets missed.
+    probe.environ_base["HTTP_USER_AGENT"] = BROWSER_UA
     assert probe.get("/healthz").get_json()["app"] == "before"
 
     monkeypatch.setenv("SATELLITE_APP_KEY", "after")

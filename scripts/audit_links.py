@@ -102,6 +102,18 @@ except Exception:  # pragma: no cover — running outside a checkout
 
 AUDIT_UA = f"Mozilla/5.0 (compatible; link-audit/1.0) {_INTERNAL_UA}"
 
+# The IN-PROCESS client is a different question from the external probe, and
+# this script had it wrong: AUDIT_UA above classifies CRAWLER — `(compatible;
+# …)` — and a bare test client is worse, sending `Werkzeug/x.y`, crawler lane
+# at dash-improve-my-llms >= 2.8. Either way every `mark_hidden` page 404s to
+# the audit and is reported as a broken internal link, which is the delisting
+# WORKING. So the local sweep names a browser UA, and keeps the internal token
+# on it so the sweep does not land in a ledger as N desktop humans.
+AUDIT_BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    f"(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 {_INTERNAL_UA}"
+)
+
 
 def check_external(url: str, cache: Dict[str, int], _retrying: bool = False) -> int:
     if url in cache:
@@ -145,6 +157,7 @@ def main() -> int:
 
     module = boot()
     client = module.app.server.test_client()
+    client.environ_base["HTTP_USER_AGENT"] = AUDIT_BROWSER_UA
 
     import dash
 

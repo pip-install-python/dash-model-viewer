@@ -260,10 +260,15 @@ both measured:
   package-data) — outside the wheel it would be present in a checkout and
   missing on the host, which is the split the item exists to close.
 
-`tests/test_api_extract.py` is this fork's half of the item's acceptance:
-the empty-metadata pin, an extract-vs-docstrings freshness pin (the extract
-is a second source of truth and can go stale), the wheel-manifest pin, and
-lane parity on `/api` asserting ROW CONTENT rather than headings. All four
+`tests/test_api_extract.py` holds what the template's own ladder pin
+(`test_nav_contract.py::test_api_reference_falls_back_to_the_committed_
+extract_then_docstrings`) cannot know: that pin drives FIXTURES, so it proves
+the mechanism; these prove this package. The shipped components come back,
+the committed extract still agrees with the docstrings it was built from (it
+is a second source of truth that `load_package` PREFERS, so a prop change
+that skips the builder silently stops reaching the page), the extract reaches
+the wheel, and `/api` carries the rows in both lanes by ROW CONTENT rather
+than headings. All four
 were mutation-checked before commit — extract removed: two pins red and the
 docstring fallback still returns 32+8 props; extract stale: the freshness
 pin red; restored: green.
