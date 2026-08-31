@@ -238,6 +238,36 @@ metadata.json path) is exempted in `tests/test_no_regeneration.py`'s
 `SKIP_DIRS` — it is an INPUT to a test, never a generator's output, and the
 guard is about the latter.
 
+SYNC ITEM 18 WIDENED THIS, and the shape changed with it. `lib/api_reference`
+now carries the template's THREE-SOURCE ladder — `metadata.json`, then the
+committed extract `<pkg>/api_metadata.json`, then the docstrings — and this
+fork lands on the third rung permanently. Two fork-side differences remain,
+both measured:
+
+- The template's `_from_docstrings` matches `- name (type; optional): desc`
+  on ONE line, unindented. This package's docstrings indent the bullet and
+  put the description on the NEXT line, so the template's regex returns ZERO
+  props here. Source 3 keeps this fork's reader: docstring for names, types
+  and descriptions, `__init__` signature for defaults where a signature
+  exists. It also has to work on a class that is not a `Component` subclass
+  at all — the fleet's `tests/fixtures/docstring_dash_pkg` is exactly that —
+  so the DOCSTRING decides membership and the signature only enriches.
+- `scripts/build_api_metadata.py` exits if `metadata.json` is absent, which
+  is this package's permanent state. Ported to fall back to the same
+  docstring reader, so the script's job here is to STAMP a committed date
+  rather than to distil a build artifact. `<pkg>/api_metadata.json` is
+  committed and listed in BOTH allowlists (MANIFEST.in and pyproject's
+  package-data) — outside the wheel it would be present in a checkout and
+  missing on the host, which is the split the item exists to close.
+
+`tests/test_api_extract.py` is this fork's half of the item's acceptance:
+the empty-metadata pin, an extract-vs-docstrings freshness pin (the extract
+is a second source of truth and can go stale), the wheel-manifest pin, and
+lane parity on `/api` asserting ROW CONTENT rather than headings. All four
+were mutation-checked before commit — extract removed: two pins red and the
+docstring fallback still returns 32+8 props; extract stale: the freshness
+pin red; restored: green.
+
 One more line differs and it is a template DEFECT, reported to the seat, not
 a divergence to keep: `as_markdown()` escaped `|` in the description cell
 only, so a union type (`string | dict`) or an enum default (`'auto' |
@@ -245,7 +275,7 @@ only, so a union type (`string | dict`) or an enum default (`'auto' |
 escaped here. The template has the same bug; it is invisible until a package
 has a union-typed prop, and this one has several.
 
-### 13. The nav-contract tests carry this fork's branch, not the template's
+### 13. The nav-contract tests carried this fork's branch — RETIRED at item 18
 
 `tests/test_nav_contract.py` is contract-class this round, and two of its
 pins are template-shaped by construction:
@@ -260,7 +290,16 @@ pins are template-shaped by construction:
   whose positive control exists precisely so an empty sitemap cannot pass
   the admin-leak assertions vacuously — it has to name a page this host has.
 
-Everything else in both files is the template's, byte for byte.
+Everything else in both files was the template's, byte for byte.
+
+**RETIRED 2026-08-30 (sync item 18).** The template closed both seams from
+its own side at 1.6.41: `test_api_page_follows_api_packages` now branches on
+`API_PACKAGES` instead of asserting it is empty, and the aside and
+positive-control pins derive their pages from the registry instead of naming
+template paths. Both files are byte-identical to the template again, and the
+fork-specific assertions moved to `tests/test_api_extract.py`, which is this
+repo's own file and not a fork of one of the template's. Kept, marked, because
+the last report describes the divergence as live.
 
 ## Retired
 
@@ -320,6 +359,13 @@ byte-for-byte", and this is one.
 ```yaml byte-owned
 # See divergence 2 — two CI lanes, so the pins here are job-scoped.
 - tests/test_python_version.py
+# Sync item 18: PORTED, not copied. The template's source 3 is a one-line
+# regex that returns zero props against this package's indented, two-line
+# docstrings, and its builder exits when metadata.json is absent — which is
+# this package's permanent state (divergence 12). A byte-copy of either would
+# empty /api silently, which is the exact failure the item exists to stop.
+- lib/api_reference.py
+- scripts/build_api_metadata.py
 ```
 
 ## Posture

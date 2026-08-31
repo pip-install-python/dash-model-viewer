@@ -104,14 +104,14 @@ SITE_H1 = "# dash-model-viewer — interactive 3D models and AR for Dash"
 # The container port. Matches the Dockerfile's EXPOSE and CMD.
 DEFAULT_BASE_URL = "http://localhost:8550"
 
-# Owner-only surfaces that must 404 their llms.txt to an anonymous reader.
-# This template ships no hidden pages, so the list is a canary rather than a
-# census: `/admin` is what a fork will add first, and `mark_hidden("/admin")`
-# has to keep working. A fork adds its own paths here in the same change that
-# marks them hidden.
+# Every mark_hidden page's llms.txt must 404. Literals because this tool runs
+# standalone against a live host with no app import — and PINNED against the
+# registry by tests/test_nav_contract.py, so a page added, renamed or deleted
+# moves this tuple in the same change (a fork's carried a page deleted weeks
+# earlier and missed /admin/traffic entirely; note 74).
 HIDDEN_DOC_PATHS = (
-    "/admin/llms.txt",
-    "/analytics/llms.txt",
+    "/admin/control-board/llms.txt",
+    "/admin/traffic/llms.txt",
 )
 
 # The hub one level up the chain. A satellite's llms.txt must name it — that

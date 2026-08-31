@@ -61,6 +61,11 @@ include-package-data = false
 [tool.setuptools.package-data]
 dash_model_viewer = [
     "dash_model_viewer.js",
+    # /api's prop tables and its sitemap lastmod read this committed extract
+    # (scripts/build_api_metadata.py). Absent from the wheel it would be
+    # present in a repo checkout and MISSING on the host, which is the exact
+    # split sync item 18 exists to close.
+    "api_metadata.json",
     "vendor/model-viewer-umd.min.js",
     "vendor/model-viewer-LICENSE",
 ]

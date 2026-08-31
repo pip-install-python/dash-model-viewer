@@ -28,6 +28,8 @@ import pytest
 from dash import Dash, html
 
 import dash_model_viewer as dmv
+from conftest import BROWSER_UA
+from lib.constants import INTERNAL_UA
 
 
 @pytest.fixture(name="index")
@@ -103,6 +105,13 @@ def test_resources_actually_serve():
     assert len(urls) == 2, urls
 
     client = app.server.test_client()
+    # Name the BROWSER lane with the internal token: a bare test client sends
+    # `Werkzeug/x.y`, which dash-improve-my-llms >= 2.8 classifies as a
+    # crawler (sync item 18's third lane). These are static asset URLs on a
+    # bare Dash app, so nothing here 404s today — but "it happens not to
+    # matter on this app" is exactly how the fleet's every-page-200 loops
+    # were written before the floor moved under them.
+    client.environ_base["HTTP_USER_AGENT"] = BROWSER_UA + " " + INTERNAL_UA
     for url in urls:
         response = client.get(url)
         assert response.status_code == 200, (url, response.status_code)

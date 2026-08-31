@@ -1,5 +1,6 @@
 ---
 name: Model Switching and Variants
+nav: Model Switching
 description: Swap the model at runtime, and drive GLTF material variants from a dropdown the viewer populates itself.
 endpoint: /model-switching
 category: Viewing

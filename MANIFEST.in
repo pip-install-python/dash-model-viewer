@@ -7,6 +7,7 @@ include README.md
 include CHANGELOG.md
 
 include dash_model_viewer/*.py
+include dash_model_viewer/api_metadata.json
 include dash_model_viewer/dash_model_viewer.js
 include dash_model_viewer/vendor/model-viewer-umd.min.js
 include dash_model_viewer/vendor/model-viewer-LICENSE

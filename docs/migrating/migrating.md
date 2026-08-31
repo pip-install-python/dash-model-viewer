@@ -1,5 +1,6 @@
 ---
 name: Migrating from 0.0.1
+nav: Migrating
 description: A prop-by-prop map from the 0.0.1 API to 1.0.0, and an honest account of why it is a clean break.
 endpoint: /migrating
 category: Getting started

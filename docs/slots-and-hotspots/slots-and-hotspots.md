@@ -1,5 +1,6 @@
 ---
 name: Slots and Hotspots
+nav: Slots
 description: Anchor any Dash component to a point on the model — and why hotspots used to be a list of dictionaries.
 endpoint: /slots-and-hotspots
 category: Viewing

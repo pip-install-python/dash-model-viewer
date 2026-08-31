@@ -5,7 +5,17 @@ from dash_iconify import DashIconify
 from components.backend_badge import create_backend_badge
 from components.navbar import search_data
 from lib.backend import get_backend_info
-from lib.constants import API_PACKAGES, BASE_URL, GITHUB_URL, SITE_SHORT_NAME
+from lib.constants import (
+    API_PACKAGES,
+    BASE_URL,
+    GITHUB_URL,
+    HEADER_HEIGHT,
+    LOGO_ASSET,
+    LOGO_STYLE,
+    WORDMARK,
+    WORDMARK_COLOR,
+    WORDMARK_VISIBLE_FROM,
+)
 
 
 def create_clerk_avatar():
@@ -29,18 +39,15 @@ def create_clerk_avatar():
     return create_clerk_menu(show_dropdown=True, dropdown_align="right")
 
 
-def create_link(icon, href, label):
+def create_link(icon, href, label, visible_from=None):
     """Create an external link icon button.
 
     ``label`` is REQUIRED: an icon-only link has no accessible name, so
     screen readers announce it as "link" and AI agents can't tell what it
     does — the exact Lighthouse/Agentic-Browsing failure measured on the
     fleet 2026-08-21. The label lands on both the anchor and the button.
-
-    Never pass ``title=`` to a DMC component to get a tooltip here: DMC 2.8's
-    ActionIcon/Anchor accept ``aria-*`` wildcards but REJECT ``title``, and
-    they raise TypeError during app construction — so the whole site fails to
-    boot rather than rendering a wrong tooltip. Use ``dmc.Tooltip`` instead.
+    ``visible_from`` (a Mantine breakpoint) lets a link drop at phone
+    widths where the header runs out of room (1.6.41).
     """
     return dmc.Anchor(
         dmc.ActionIcon(
@@ -52,18 +59,19 @@ def create_link(icon, href, label):
         ),
         href=href,
         target="_blank",
+        visibleFrom=visible_from,
         **{"aria-label": label},
     )
 
 
 def create_other_apps_menu():
-    """*Other Apps* — the network, from ONE registry (sync item 16).
+    """*Other Apps* — the network, from ONE registry (1.6.38).
 
     A hover menu in the top bar (the 2plot.dev shape the owner named as the
-    reference), populated from lib.network_directory: the PRIMARY entries of
-    PEERS + AFFILIATED, this app omitted, labelled by domain. The sidebar
-    carries no network section any more — this is the only place the network
-    is listed, so it cannot be listed twice.
+    reference), populated from lib.network_directory: PEERS + AFFILIATED,
+    this app omitted, labelled by domain. The sidebar carries no network
+    section any more — this is the only place the network is listed, so it
+    cannot be listed twice.
     """
     from lib.network_directory import other_apps_for
 
@@ -91,8 +99,8 @@ def create_other_apps_menu():
                     for entry in other_apps_for(BASE_URL)
                 ],
                 id="other-apps-menu",
-                # Solid, themed panel (the visual pass): the seat found the
-                # dropdown near-transparent with washed-out items in dark mode.
+                # Solid, themed panel (1.6.39): the seat found the dropdown
+                # near-transparent with washed-out items in dark mode.
                 styles={"dropdown": {
                     "backgroundColor": "var(--mantine-color-body)",
                     "border": "1px solid var(--mantine-color-default-border)",
@@ -203,7 +211,7 @@ def create_header(data):
                             size="lg",
                             color="gray",
                             hiddenFrom="md",
-                            **{"aria-label": "Open the navigation menu"},
+                            **{"aria-label": "Open navigation menu"},
                         ),
                         # Desktop-only burger: collapses/expands the AppShell navbar
                         # on md-xl screens. Default opened=True so users see the X
@@ -213,60 +221,46 @@ def create_header(data):
                             opened=True,
                             size="sm",
                             visibleFrom="md",
-                            **{"aria-label": "Collapse or expand the sidebar"},
+                            **{"aria-label": "Toggle the documentation sidebar"},
                         ),
+                        # The home link's accessible name comes from the
+                        # aria-label, NOT the wordmark text: below xs the
+                        # wordmark is display:none (visibleFrom), which
+                        # removes it from the accessibility tree — without
+                        # the label the home link would have no name at
+                        # all on phones (the logo img is decorative,
+                        # alt=""). Two forks hit this independently;
+                        # visibleFrom (vs dropping the node) also keeps
+                        # the typing animation's target in the DOM.
                         dmc.Anchor(
                             dmc.Group(
                                 [
                                     html.Img(
-                                        src=get_asset_url('logo.png'),
+                                        src=get_asset_url(LOGO_ASSET),
                                         alt="",
-                                        style={'height': '36px', 'width': '36px'}
+                                        style=LOGO_STYLE,
                                     ),
-                                    # Was a hard-coded "Dash Docs" in #03c7e5 —
-                                    # the boilerplate's own name and a colour
-                                    # from neither palette. The wordmark is the
-                                    # site's identity, so it comes from the one
-                                    # constant, in the theme colour.
                                     dmc.Text(
-                                        SITE_SHORT_NAME,
+                                        WORDMARK,
                                         size="lg",
                                         fw=700,
-                                        c="indigo.4",
+                                        c=WORDMARK_COLOR,
                                         id="dash-docs-title",
-                                        # Hidden below 36em (576px). The name
-                                        # is long, and on a phone it competes
-                                        # with the hamburger on its left and
-                                        # the theme toggle and avatar on its
-                                        # right; the mark alone still says
-                                        # whose site this is. Visible again
-                                        # from small tablets up.
-                                        visibleFrom="xs",
+                                        visibleFrom=WORDMARK_VISIBLE_FROM,
                                     ),
                                 ],
                                 gap="sm",
                             ),
                             href="/",
                             underline=False,
-                            # The wordmark above IS this link's accessible
-                            # name, and `visibleFrom` hides it with
-                            # `display: none` — which removes it from the
-                            # accessibility tree, not just from view. Without
-                            # this label the home link would be announced as
-                            # a bare "link" on exactly the screens where the
-                            # text is hidden, because the logo beside it is
-                            # decorative (alt=""). Same class of defect as the
-                            # icon-only controls, arriving through a styling
-                            # prop rather than a missing attribute.
-                            **{"aria-label": f"{SITE_SHORT_NAME} — home"},
+                            **{"aria-label": f"{WORDMARK} — home"},
                         ),
                     ],
                     gap="md",
                 ),
 
                 # Right section: Backend badge + OpenAPI (fastapi only) +
-                # package version + Search + Other Apps + GitHub +
-                # Theme toggle + Clerk avatar (when on)
+                # Search + GitHub + Theme toggle + Clerk avatar (when on)
                 dmc.Group(
                     [
                         dmc.Box(create_backend_badge(), visibleFrom="sm"),
@@ -277,7 +271,8 @@ def create_header(data):
                         create_link(
                             "radix-icons:github-logo",
                             GITHUB_URL,
-                            "View dash-model-viewer on GitHub",
+                            "View the source on GitHub",
+                            visible_from="xs",   # the footer carries GitHub on phones
                         ),
                         dmc.ActionIcon(
                             [
@@ -304,7 +299,7 @@ def create_header(data):
                 ),
             ],
             justify="space-between",
-            h=70,
+            h=HEADER_HEIGHT,
             px="xl",
         ),
     )

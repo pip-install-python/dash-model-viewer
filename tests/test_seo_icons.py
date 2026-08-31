@@ -51,12 +51,41 @@ def test_discovery_agrees_with_the_declared_icons(app):
 
 
 def _declared_lastmods() -> set[str]:
+    """Every date a HUMAN wrote down, from all three places this site
+    declares one (sync item 18 added the second and third).
+
+    The rule is unchanged and is the whole point: a sitemap may say a date
+    only if something committed says it. What widened is where "committed"
+    lives — a generated page has no frontmatter to stamp, and giving it a
+    build-time mtime instead is precisely the invented date this pin exists
+    to stop.
+
+      docs/**/*.md `lastmod:`  the docs pages, stamped by hand
+      <pkg>/api_metadata.json  `generated` — /api's date, written by
+                               scripts/build_api_metadata.py when the props
+                               it renders are regenerated, and COMMITTED, so
+                               a Docker rebuild cannot move it
+      CHANGELOG.md             the newest dated release heading — /changelog's
+                               date, and a release is dated by hand
+    """
+    import json
+
     dates = set()
     for md in Path("docs").glob("**/*.md"):
         head = md.read_text().split("---")[1] if md.read_text().startswith("---") else ""
         m = re.search(r"^lastmod:\s*(\d{4}-\d{2}-\d{2})\s*$", head, re.MULTILINE)
         if m:
             dates.add(m.group(1))
+
+    extract = Path("dash_model_viewer") / "api_metadata.json"
+    if extract.is_file():
+        generated = json.loads(extract.read_text()).get("generated")
+        if generated:
+            dates.add(generated)
+
+    changelog = Path("CHANGELOG.md")
+    if changelog.is_file():
+        dates.update(re.findall(r"^## .*?(\d{4}-\d{2}-\d{2})", changelog.read_text(), re.M))
     return dates
 
 

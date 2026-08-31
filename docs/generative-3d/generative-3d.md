@@ -1,5 +1,6 @@
 ---
 name: Generative 3D Art
+nav: Generative 3D
 description: Describe a sculpture and get a real .glb — with Claude as a scene compiler, not a mesh generator, and every triangle built by deterministic Python.
 endpoint: /generative-3d
 category: Generating

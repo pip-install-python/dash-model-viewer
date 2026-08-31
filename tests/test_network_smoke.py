@@ -46,19 +46,24 @@ def wired(battery, client, monkeypatch):
     """Point the battery's `fetch` at the test client.
 
     The signature is `fetch(url, ua=..., method=..., body=..., headers=...)`
-    and it returns `(status, lowercased_headers, text)`. Only GET is used by
-    the satellite battery, so a non-GET here is a bug in the script rather
-    than something to emulate.
+    and it returns `(status, lowercased_headers, text)`. The battery is a
+    GET battery with exactly ONE exception — `HEAD /healthz`, which asks
+    whether HEAD works at all (1.6.32) — so anything else non-GET is still
+    a bug in the script rather than something to emulate. Before 1.6.32
+    this stub asserted GET outright, which is why the assertion below names
+    the one path allowed to be different instead of dropping the guard.
     """
     seen_agents = []
 
     def fetch(url, ua=battery.UA, method="GET", body=None, headers=None,
               timeout=None, retries=1):
-        assert method == "GET", f"the satellite battery issued a {method}"
-        seen_agents.append(ua)
         path = url[len(BASE):] if url.startswith(BASE) else url
+        assert method == "GET" or (method == "HEAD" and path == "/healthz"), (
+            f"the satellite battery issued a {method} to {path}"
+        )
+        seen_agents.append(ua)
         accept = (headers or {}).get("Accept")
-        response = client.get(path or "/", user_agent=ua, accept=accept)
+        response = client.open(path or "/", method, user_agent=ua, accept=accept)
         return response.status, dict(response.headers), response.text
 
     monkeypatch.setattr(battery, "fetch", fetch)
@@ -123,7 +128,7 @@ def test_the_default_base_url_matches_the_container_port(battery):
 
 
 def test_the_batterys_default_ua_is_browser_lane_and_still_internal():
-    """Sync item 17 (muischeduler's finding): at dimll >= 2.8 a UA without a
+    """1.6.40 (muischeduler's finding): at dimll >= 2.8 a UA without a
     browser engine token is crawler-lane, so a default-UA check reads the
     crawler document. The default names the browser lane FIRST and keeps
     the internal token (a substring match) so the tracker still drops it;

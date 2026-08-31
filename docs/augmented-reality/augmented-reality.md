@@ -1,5 +1,6 @@
 ---
 name: Augmented Reality
+nav: AR
 description: Place a model in a real room — and the default that silently disabled WebXR on Android for the whole life of 0.0.1.
 endpoint: /augmented-reality
 category: Interaction

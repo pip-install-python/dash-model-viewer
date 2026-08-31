@@ -104,6 +104,7 @@ def fetch(
     accept: Optional[str] = None,
     retries: Optional[int] = None,
     timeout: float = TIMEOUT,
+    method: str = "GET",
 ) -> Tuple[int, str, Dict[str, str]]:
     """Returns (status, body, headers).
 
@@ -131,7 +132,13 @@ def fetch(
     headers = {"User-Agent": user_agent}
     if accept is not None:
         headers["Accept"] = accept
-    request = urllib.request.Request(url, headers=headers)
+    # `method` exists for ONE check (`HEAD /healthz` answers what `GET`
+    # answers) and every other call site keeps GET — probing a site with HEAD
+    # tells you about its router's method table and not about its documents.
+    # Adding a keyword here is the 1.6.29 wake() hazard again: this repo's own
+    # tests/test_smoke_live.py stubs `fetch`, and those stubs take `method` in
+    # the same commit.
+    request = urllib.request.Request(url, headers=headers, method=method)
     attempts = RETRIES if retries is None else max(1, retries)
     last: Tuple[int, str, Dict[str, str]] = (0, "no attempt was made", {})
     for attempt in range(attempts):
@@ -371,6 +378,33 @@ def main(base: str) -> int:
             f"got {got}: this host still walls training crawlers (sync item 15)",
         )
 
+    # The repository link must RESOLVE (1.6.41; pannellum's icon, JSON-LD
+    # codeRepository and llms-github-repo meta all spelled `dash-pannellum`
+    # for the repo `dash_pannellum` — a live 404 that "profile vs repo"
+    # framing never caught). GitHub answers GET on a repo page with 200;
+    # a wrong slug is 404.
+    # Its OWN request, not `fetch`: every fork's test suite stubs `fetch`
+    # with a fixed signature and routes it to the in-process app (the
+    # 1.6.29 lesson), and GitHub is not this app. Unreachable (a sandbox
+    # with no egress) is a notice, not a red; a reachable 404 is red.
+    try:
+        from lib.constants import GITHUB_URL as _GITHUB_URL
+    except Exception:  # noqa: BLE001
+        _GITHUB_URL = None
+    if _GITHUB_URL:
+        try:
+            req = urllib.request.Request(_GITHUB_URL, headers={"User-Agent": BROWSER_UA}, method="GET")
+            with urllib.request.urlopen(req, timeout=15, context=SSL_CONTEXT) as resp:
+                gh_status = resp.status
+        except urllib.error.HTTPError as exc:
+            gh_status = exc.code
+        except Exception as exc:  # noqa: BLE001 — no route to GitHub from here
+            gh_status = None
+            print(f"  [notice] GITHUB_URL not checked — {type(exc).__name__}: {exc}")
+        if gh_status is not None:
+            check("GITHUB_URL resolves (the repository, spelled right)",
+                  gh_status == 200, f"{_GITHUB_URL} answered {gh_status}")
+
     status, sitemap, _ = fetch(f"{base}/sitemap.xml")
     check("/sitemap.xml responds 200", status == 200, f"got {status}")
     page_urls = re.findall(r"<loc>([^<]+)</loc>", sitemap)
@@ -380,6 +414,19 @@ def main(base: str) -> int:
 
     status, health, _ = fetch(f"{base}/healthz")
     check("/healthz responds 200", status == 200, f"got {status}")
+
+    # HTTP requires HEAD wherever GET is served. Werkzeug derives it from every
+    # GET rule; FastAPI's APIRoute does not, so an ASGI-lane fork answers 405 to
+    # the method most uptime monitoring probes with. One request, against the
+    # route whose 405 reads as "the site is down" while the site is healthy.
+    head_status, _, _ = fetch(f"{base}/healthz", method="HEAD")
+    check(
+        "HEAD /healthz answers what GET answers",
+        head_status == status,
+        f"HEAD got {head_status}, GET got {status}"
+        + (" — this host's router has no HEAD rule for its GET routes"
+           if head_status == 405 else ""),
+    )
 
     # --- 2. Canonical host — the failure that deindexes a satellite --------
     print("\nCanonical tags")

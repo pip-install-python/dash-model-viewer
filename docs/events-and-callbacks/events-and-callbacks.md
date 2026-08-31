@@ -1,5 +1,6 @@
 ---
 name: Events and Callbacks
+nav: Events
 description: The camera, load state, model dimensions, AR status and hotspot clicks arrive as ordinary Dash props — no clientside callbacks.
 endpoint: /events-and-callbacks
 category: Interaction

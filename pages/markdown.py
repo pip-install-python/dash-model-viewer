@@ -40,6 +40,10 @@ class Meta(BaseModel):
     icon: Optional[str] = None
     # Sidebar position within its category (sync item 16); ties break on name.
     order: int = 1000
+    # Short sidebar label (sync item 18); default = name. Three forks rendered
+    # long page names where they had short labels — shortening `name:` would
+    # churn <title>, og:title and the llms.txt heading; this is the seam.
+    nav: Optional[str] = None
     # Who may read this page: public | auth | admin | hidden. Absent means
     # the deployment default (PAGE_DEFAULT_TIER, else public) — see
     # lib/page_tiers.py for the tier model and why the default is open.
@@ -218,6 +222,7 @@ for file in files:
         category=metadata.category,
         icon=metadata.icon,
         order=metadata.order,
+        nav=metadata.nav,
         # Without this Dash infers an image from assets/ and finds `logo.svg` —
         # an SVG, which every social scraper rejects — then emits it ALONGSIDE
         # the og:image in templates/index.html. See lib.constants.OG_IMAGE_URL.

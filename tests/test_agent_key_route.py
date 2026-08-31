@@ -10,6 +10,9 @@ from __future__ import annotations
 import flask
 import pytest
 
+from conftest import BROWSER_UA
+from lib.constants import INTERNAL_UA
+
 from lib import agent_key
 
 NO_STORE = "private, no-store"
@@ -24,7 +27,16 @@ class _App:
 def route_client():
     server = flask.Flask(__name__)
     agent_key.register_agent_key_route(_App(server), "flask")
-    return server.test_client()
+    client = server.test_client()
+    # A bare test client sends `Werkzeug/x.y` — the CRAWLER lane at
+    # dash-improve-my-llms >= 2.8 (sync item 18's third lane). This stub app
+    # has no lane split of its own, but the rule is named here too so the
+    # grep in tests/test_nav_contract.py stays a rule and not an exception
+    # list, and so a copy of this file into an app that DOES split lanes
+    # starts on the right one. The internal token keeps a CI sweep out of
+    # any ledger it might reach.
+    client.environ_base["HTTP_USER_AGENT"] = BROWSER_UA + " " + INTERNAL_UA
+    return client
 
 
 def test_anonymous_gets_204_with_no_store(route_client):

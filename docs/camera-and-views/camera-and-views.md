@@ -1,5 +1,6 @@
 ---
 name: Camera and Views
+nav: Camera
 description: Camera presets, flight between them, and the 230-line clientside example that became 47 lines of Python.
 endpoint: /camera-and-views
 category: Viewing

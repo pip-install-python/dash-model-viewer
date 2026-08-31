@@ -99,6 +99,15 @@ jobs:
           # GITHUB_TOKEN pushes trigger no workflows — correct: `on:` is
           # main-only, and it is Render, not Actions, that reacts to
           # `release` (render.yaml `branch: release`, autoDeploy on).
+          # Refs are a filesystem: a `release/<anything>` branch (any depth)
+          # makes `release` a DIRECTORY and this push fails with "cannot lock
+          # ref". Owner step: delete or rename every release/* branch —
+          # never --force (sync item 13).
+          if git ls-remote --heads origin 'release/*' | grep -q .; then
+            echo "::error::a release/* branch exists — 'release' cannot also be a ref. Delete or rename every release/* branch (owner step, sync item 13), then re-run failed jobs."
+            git ls-remote --heads origin 'release/*'
+            exit 1
+          fi
           git push origin "HEAD:refs/heads/release"
           echo "::notice::release → ${GITHUB_SHA} (fast-forward)"
 

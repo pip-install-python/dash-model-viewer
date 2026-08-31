@@ -219,30 +219,34 @@ input:invalid {
 }
 
 /* Markdown tables scroll in their own box instead of dragging the page
-   sideways on phones. A <table> is min-content sized: with overflow visible
-   it refuses to shrink below its widest row and pushes the whole document
-   wide, so every paragraph on the page can be swiped off-screen (a fork
-   measured 105px of horizontal drag at 414px from one prop table). This is
-   GitHub's markdown recipe: content-width, capped at the container,
-   scrollable past it — a no-op for tables that already fit. Element+class
-   selector so it outranks Mantine's own width rule regardless of stylesheet
-   load order. markdown2dash stamps m2d-table on every table it renders;
-   `.. kwargs::` prop tables carry m2d-block-kwargs instead, which is the one
-   table class the rule never matched. */
+   sideways on phones. A <table> is min-content sized: with overflow
+   visible it refuses to shrink below its widest row and pushes the whole
+   document wide, so every paragraph on the page can be swiped off-screen
+   (a fork measured 105px of horizontal drag at 414px from one prop
+   table). This is GitHub's markdown recipe: content-width, capped at the
+   container, scrollable past it — a no-op for tables that already fit.
+   Element+class selector so it outranks Mantine's own width rule
+   regardless of stylesheet load order. markdown2dash stamps m2d-table on
+   every table it renders, including kwargs prop tables. */
 table.m2d-table,
-table.m2d-block-kwargs {
+table.m2d-block-kwargs,
+.m2d-block-props table {
     display: block;
     width: max-content;
     max-width: 100%;
     overflow-x: auto;
 }
+/* (1.6.39) `.. kwargs::` prop tables carry m2d-block-kwargs, not m2d-table
+   — the one table class the rule above never matched; measured on
+   /examples/directives at 391px: a 457px table, a 488px document. */
 
-/* Code blocks scroll inside their own box, wherever they sit (the visual
-   pass, sync item 16). CodeHighlight's <pre> already scrolls, but a flex
-   parent with the default min-width:auto — Mantine's List item wrapper, a
-   Blockquote, a Stack — refuses to shrink below the code's intrinsic width
-   and drags the whole document wide (measured on the template: a 959px
-   document in a 200px viewport, widest element the List itemWrapper).
+/* Code blocks scroll inside their own box, wherever they sit (1.6.39;
+   owner-observed on /backend-comparison at phone width). CodeHighlight's
+   <pre> already scrolls, but a flex parent with the default min-width:auto
+   — Mantine's List item wrapper, a Blockquote, a Stack — refuses to shrink
+   below the code's intrinsic width and drags the whole document wide
+   (measured: a 959px document in a 200px viewport, widest element the
+   List itemWrapper around the "Replace @server.before_request" block).
    Public Mantine class names only — never the hashed .m_* internals. */
 .mantine-List-itemWrapper,
 .mantine-List-itemLabel,
@@ -255,7 +259,8 @@ table.m2d-block-kwargs {
     max-width: 100%;
 }
 /* The wrapper is inline-flex and the label a block child: without
-   min-width:0 on the LABEL too, it grows to the code's width. */
+   min-width:0 on the LABEL too, it grows to the code's width (measured
+   887px inside a 287px wrapper on /backend-comparison at 391px). */
 .mantine-List-itemWrapper {
     width: 100%;
 }
@@ -263,18 +268,19 @@ table.m2d-block-kwargs {
     flex: 1 1 auto;
 }
 /* Timeline bullets (/changelog): a Text in a no-wrap Group grows to its
-   longest unbreakable token — a 60-character prop name in a code span — and
-   leaves its card. Same rule as the component sets inline; here so the
-   stylesheet alone holds the line. */
+   longest unbreakable token — a 60-character test name in a code span —
+   and leaves its card (a 549px document at 391px). Same rule as the
+   component sets inline; here so the stylesheet alone holds the line. */
 .mantine-Timeline-root .mantine-Text-root,
 .mantine-Timeline-root .mantine-Code-root {
     min-width: 0;
     overflow-wrap: anywhere;
 }
-/* Inline code in prose: a long unbreakable token (`camera_orbit` chains,
-   dotted module paths) is the last thing that can push a page past the
-   viewport once blocks and tables scroll in their own boxes. Block code
-   (CodeHighlight) keeps pre formatting; this is inline only. */
+/* Inline code in prose: a long unbreakable token (`app.server.before_request`
+   chains, dotted module paths) is the last thing that can push a page past
+   the viewport once blocks and tables scroll in their own boxes — measured:
+   a 353px codespan, a 425px document at 391px on /backend-comparison.
+   Block code (CodeHighlight) keeps pre formatting; this is inline only. */
 code.m2d-codespan,
 .mantine-Code-root:not(.mantine-CodeHighlight-code) {
     overflow-wrap: anywhere;
@@ -287,24 +293,16 @@ code.m2d-codespan,
     max-width: 100%;
 }
 
-div .m_46b77525 {
-    margin-top: calc(0.5rem* var(--mantine-scale)) !important;
-}
-
-.m_5caae85b {
-    position: absolute !important;
-    top: calc(0.3125rem* var(--mantine-scale));
-    inset-inline-end: calc(0.3125rem* var(--mantine-scale));
-    z-index: 1;
-}
-
-.m_9cdde9a {
-    inset-inline-end: 0;
-    width: var(--app-shell-aside-width);
-    transform: var(--app-shell-aside-transform);
-    z-index: var(--app-shell-aside-z-index);
-    margin-top: 15px;
-}
+/* NEVER style Mantine's hashed .m_* classes — they are private internals,
+   version-coupled by construction. A rule that stops matching after a bump
+   fails silently; one that starts matching applies geometry to the wrong
+   component. Three fossils from the dmc-docs fork era lived here until
+   1.6.5 (.m_46b77525 !important margin on every Input wrapper,
+   .m_5caae85b dead in both DMC 2.7 and 2.8, .m_9cdde9a restating
+   Mantine's own aside declarations) — the same class of rule that left
+   leaflet's drawer floating and emojimart's drawer pinned at 63vh.
+   tests/test_css_hygiene.py now fails on any hashed selector; use the
+   static mantine-<Component>-<part> classes like the rule below. */
 
 /* Rank the AppShell sections: the aside under the header, always.
    The Clerk avatar dropdown renders INSIDE the header, so no z-index on the
@@ -322,6 +320,10 @@ div .m_46b77525 {
    10 keeps the aside above page content and below every piece of chrome. */
 aside.mantine-AppShell-aside {
     z-index: 10 !important;
+    /* Rescued from the retired .m_9cdde9a fossil: the one intentful pixel
+       in that copied block was this breathing gap between the header line
+       and the top of the TOC. */
+    margin-top: 15px;
 }
 
 :root[data-mantine-color-scheme="dark"] {
@@ -592,4 +594,21 @@ img[alt=logo] { width: 100%; }
 :root[data-mantine-color-scheme="dark"] .ag-theme-alpine .user-agent-cell {
     font-size: 12px;
     color: #909296;
+}
+/* Skip link (1.6.41, adopted from muischeduler): the first tab stop, off-
+   screen until keyboard focus, then pinned top-left above the header. */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 9999;
+    background: var(--mantine-primary-color-filled);
+    color: var(--mantine-color-white);
+    padding: 8px 14px;
+    border-radius: 0 0 8px 0;
+    font-weight: 600;
+    text-decoration: none;
+}
+.skip-link:focus {
+    left: 0;
 }

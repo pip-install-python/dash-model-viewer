@@ -1,5 +1,6 @@
 ---
 name: Attributes and Parity
+nav: Attributes
 description: Reach every model-viewer attribute — including ones added upstream after this release — without waiting for a new version of this package.
 endpoint: /attributes-and-parity
 category: Reference

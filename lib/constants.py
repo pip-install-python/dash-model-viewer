@@ -52,6 +52,21 @@ APP_TITLE = SITE_BRAND
 # run past every platform's truncation point.
 SITE_SHORT_NAME = "dash-model-viewer"
 
+# The header's mark and wordmark, lifted out of components/header.py (sync
+# item 18) so that file holds NO fork content and stays byte-identical to the
+# template's: the asset under assets/, its box, the wordmark colour, and the
+# breakpoint the wordmark text appears from.
+#
+# WORDMARK is this site's identity, so it is the package name, not a generic
+# "Dash Docs". It is long for a phone header — below `xs` the text is hidden
+# with `visibleFrom` (which removes it from the accessibility tree, not just
+# from view) and the home link's aria-label carries the name instead.
+WORDMARK = SITE_SHORT_NAME
+LOGO_ASSET = "logo.png"
+LOGO_STYLE = {"height": "36px", "width": "36px"}
+WORDMARK_COLOR = "indigo.4"
+WORDMARK_VISIBLE_FROM = "xs"
+
 # Prefixed to every per-page title (`pages/markdown.py`, `pages/home.py`), and
 # therefore NOT only a browser-tab string: Dash passes the page title straight
 # into `og:title` and `twitter:title` (dash/_pages.py `_page_meta_tags`), so

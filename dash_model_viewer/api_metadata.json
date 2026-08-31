@@ -1,0 +1,297 @@
+{
+ "components": [
+  {
+   "description": "An interactive 3D model with Augmented Reality support.",
+   "name": "ModelViewer",
+   "props": [
+    {
+     "default": "",
+     "description": "Component id for callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string | dict"
+    },
+    {
+     "default": "",
+     "description": "Accessible description of the model. Required, and not decorative: it is the only thing a screen-reader user gets.",
+     "name": "alt",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "default": "True",
+     "description": "Enable AR and show the AR affordance where supported.",
+     "name": "ar",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": "webxr scene-viewer quick-look",
+     "description": "Space-separated AR back-ends, most preferred first.",
+     "name": "ar_modes",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "auto",
+     "description": "Whether AR may rescale the model.",
+     "name": "ar_scale",
+     "required": false,
+     "type": "'auto' | 'fixed'"
+    },
+    {
+     "default": "",
+     "description": "`session-started`, `object-placed`, `failed`, ...",
+     "name": "ar_status",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "`tracking` or `not-tracking`.",
+     "name": "ar_tracking",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Raw kebab-case model-viewer attributes.  Read-only props, updated by the component:",
+     "name": "attributes",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "`{\"orbit\", \"target\", \"field_of_view\", \"source\"}`. Only user interaction is reported \u2014 programmatic changes are suppressed, or a callback that writes `camera_orbit` would re-trigger itself.",
+     "name": "camera",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "100",
+     "description": "Milliseconds to coalesce `camera-change` events before updating `camera`. **Do not set this to 0 casually** \u2014 the event fires at frame rate, so 0 means a callback per frame per viewer.",
+     "name": "camera_change_debounce",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "True",
+     "description": "Let the user orbit, zoom and pan.",
+     "name": "camera_controls",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": "",
+     "description": "`\"theta phi radius\"`, e.g. `\"45deg 70deg 2.5m\"`. Two-way: also reported back through `camera`.",
+     "name": "camera_orbit",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "`\"X Y Z\"` in metres, e.g. `\"0m 1m 0m\"`.",
+     "name": "camera_target",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "`Slot` components. Hotspots, a custom AR button, a poster, a progress bar \u2014 every one of those is a named slot.",
+     "name": "children",
+     "required": false,
+     "type": "list of components"
+    },
+    {
+     "default": "",
+     "description": "CSS class for the viewer element.",
+     "name": "class_name",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "e.g. `\"30deg\"`.  - min_field_of_view / max_field_of_view (string; optional): Zoom limits.  - min_camera_orbit / max_camera_orbit (string; optional): Orbit limits, `\"auto auto auto\"` for none.",
+     "name": "field_of_view",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "Camera transition speed. Lower is slower; `0` is instant. This is what makes a programmatic camera move read as a flight rather than a jump-cut.",
+     "name": "interpolation_decay",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "",
+     "name": "max_camera_orbit",
+     "required": false,
+     "type": "Optional[str]"
+    },
+    {
+     "default": "",
+     "description": "",
+     "name": "max_field_of_view",
+     "required": false,
+     "type": "Optional[str]"
+    },
+    {
+     "default": "",
+     "description": "",
+     "name": "min_camera_orbit",
+     "required": false,
+     "type": "Optional[str]"
+    },
+    {
+     "default": "",
+     "description": "",
+     "name": "min_field_of_view",
+     "required": false,
+     "type": "Optional[str]"
+    },
+    {
+     "default": "",
+     "description": "`{\"dimensions\": {\"x\",\"y\",\"z\"}, \"variants\": [...], \"animations\": [...]}`, set on load. Dimensions are in metres \u2014 this is the prop that removes the bounding-box maths from user JS.",
+     "name": "model_info",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "`{\"status\": \"loading\" | \"loaded\" | \"error\", \"progress\": float}`.",
+     "name": "model_state",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "False",
+     "description": "When True, clicking the model reports the 3D surface point under the cursor through `scene_point`.",
+     "name": "pick_on_click",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": "",
+     "description": "Image shown until the model is ready.",
+     "name": "poster",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "`{\"position\", \"normal\", \"uv\"}` for the last picked point, when `pick_on_click` is set.",
+     "name": "scene_point",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "",
+     "description": "0 to 1.",
+     "name": "shadow_intensity",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "URL of the `.glb` / `.gltf` model.",
+     "name": "src",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "CSS for the viewer element. It has no intrinsic size \u2014 give it one.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    },
+    {
+     "default": "neutral",
+     "description": "`neutral`, `aces`, `agx`, `commerce`, ...",
+     "name": "tone_mapping",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "pan-y",
+     "description": "Which touch gestures the page keeps rather than the model.",
+     "name": "touch_action",
+     "required": false,
+     "type": "'pan-y' | 'pan-x' | 'none'"
+    },
+    {
+     "default": "",
+     "description": "GLTF material variant. `None` (or `\"default\"`) selects the model's default.",
+     "name": "variant_name",
+     "required": false,
+     "type": "string"
+    }
+   ]
+  },
+  {
+   "description": "A named slot inside a :class:`ModelViewer`.",
+   "name": "Slot",
+   "props": [
+    {
+     "default": "",
+     "description": "Component id for callbacks.",
+     "name": "id",
+     "required": false,
+     "type": "string | dict"
+    },
+    {
+     "default": "",
+     "description": "Slot content. Any Dash component.",
+     "name": "children",
+     "required": false,
+     "type": "list of components"
+    },
+    {
+     "default": "",
+     "description": "Added alongside the built-in `dmv-slot` class.",
+     "name": "class_name",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "0",
+     "description": "Increments on click. Use as a callback `Input` \u2014 this is how a hotspot drives a camera move without any clientside JavaScript.",
+     "name": "n_clicks",
+     "required": false,
+     "type": "number"
+    },
+    {
+     "default": "",
+     "description": "`\"X Y Z\"` surface normal; controls hotspot occlusion behaviour.",
+     "name": "normal",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "`\"X Y Z\"` in model space. Required for hotspots.",
+     "name": "position",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "The slot name, e.g. `\"hotspot-1\"`, `\"ar-button\"`, `\"poster\"`.",
+     "name": "slot",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "default": "",
+     "description": "CSS for the slot element.",
+     "name": "style",
+     "required": false,
+     "type": "dict"
+    }
+   ]
+  }
+ ],
+ "generated": "2026-08-30"
+}
