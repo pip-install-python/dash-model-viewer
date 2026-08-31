@@ -306,6 +306,27 @@ fork-specific assertions moved to `tests/test_api_extract.py`, which is this
 repo's own file and not a fork of one of the template's. Kept, marked, because
 the last report describes the divergence as live.
 
+### 14. One skip in `tests/test_nav_contract.py`: this CHANGELOG has no prose
+
+The 1.6.43 pin `test_this_repos_own_changelog_has_no_phantom_releases` ends
+with a non-vacuity guard — `assert prose` — that requires THIS repo's
+CHANGELOG.md to contain at least one `## ` heading which is not a release, so
+that the exclusion half of the property is exercised against the real file.
+
+A strictly-conformant Keep a Changelog file has no such heading. Every `## `
+is a release by construction, and this repo's is exactly that: three
+headings, three releases, zero prose. The guard therefore asks a fork to
+write prose it has no reason to write, and the property it guards is already
+proven by the fixture in
+`test_the_changelog_parser_excludes_prose_sections`.
+
+So the assert becomes a `pytest.skip` with that reason. It is the only edit
+in an otherwise byte-identical file, and it is the SECOND time this round a
+template non-vacuity guard assumed a fork-specific shape (the first asserted
+`API_PACKAGES == []`, closed upstream at 1.6.41 — divergence 13). Reported to
+the template seat; this entry retires the moment the guard learns to skip on
+an all-releases changelog instead of failing.
+
 ## Retired
 
 Marked, not deleted — older reports still describe these as live.

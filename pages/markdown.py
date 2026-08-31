@@ -38,11 +38,12 @@ class Meta(BaseModel):
     package: str = "dash_pydantic_form"
     category: Optional[str] = None
     icon: Optional[str] = None
-    # Sidebar position within its category (sync item 16); ties break on name.
+    # Sidebar position within its category (1.6.38); ties break on name.
     order: int = 1000
-    # Short sidebar label (sync item 18); default = name. Three forks rendered
-    # long page names where they had short labels — shortening `name:` would
-    # churn <title>, og:title and the llms.txt heading; this is the seam.
+    # Short sidebar label (1.6.41); default = name. Three forks rendered
+    # long page names where they had short labels — shortening `name:`
+    # would churn <title>, og:title and the llms.txt heading; this is the
+    # seam.
     nav: Optional[str] = None
     # Who may read this page: public | auth | admin | hidden. Absent means
     # the deployment default (PAGE_DEFAULT_TIER, else public) — see
@@ -75,6 +76,7 @@ class Meta(BaseModel):
 
 
 _SOURCE_DIRECTIVE = re.compile(r'^\.\. source::(.+?)$', re.MULTILINE)
+_EXEC_DIRECTIVE = re.compile(r'^\.\. exec::(.+?)$', re.MULTILINE)
 _LANG_MAP = {
     'py': 'python', 'pyi': 'python',
     'js': 'javascript', 'jsx': 'jsx',
@@ -91,7 +93,18 @@ _LANG_MAP = {
 
 
 def _expand_source_directives(markdown_content: str) -> str:
-    """Inline `.. source::path` directives with the referenced file content.
+    """Inline `.. source::path` and `.. exec::module` into the prose.
+
+    ONE fence-aware pass, two directives, two consumers — the browser lane
+    renders components, the machine lane gets the code that produces them.
+    `.. exec::` joined this function at 1.6.43 (owner's decision 0aa) after
+    the item-18 fan-out found the same class live on six forks: a directive
+    that renders Dash components puts its output only in the React tree,
+    and the machine lane is built from the markdown SOURCE where the
+    directive line is stripped. Measured here first: /fastapi-showcase
+    served 19,378 bytes about three components whose code was nowhere in
+    it. The dedupe rule below keeps this composable with the hand-paired
+    road four of this repo's docs already take.
 
     This produces the prose that dash-improve-my-llms 2.0 will serve at
     `/<page>/llms.txt`. Replacing the directive with the real file content
@@ -122,10 +135,71 @@ def _expand_source_directives(markdown_content: str) -> str:
         except Exception as exc:
             return f'\n<!-- Error reading {file_path}: {exc} -->\n'
 
+    def exec_target_file(module_path: str) -> str:
+        """`docs.fastapi-showcase.async_demo` -> `docs/fastapi-showcase/async_demo.py`."""
+        return module_path.strip().split('\n')[0].strip().replace('.', '/') + '.py'
+
+    def exec_expansion(module_path: str) -> str:
+        """The exec'd component's SOURCE, which is what an agent can use.
+
+        A component cannot be serialised into markdown and a screenshot is
+        worse than nothing to a reader who cannot render it; the source is
+        what produces the demo (llms' shaping, 2026-08-31).
+        """
+        target = exec_target_file(module_path)
+        try:
+            content = Path(target).read_text()
+            tail = '' if content.endswith('\n') else '\n'
+            return f'\n```python\n# File: {target}\n\n{content}{tail}```\n'
+        except FileNotFoundError:
+            return f'\n<!-- Error: exec target not found: {target} -->\n'
+        except Exception as exc:
+            return f'\n<!-- Error reading {target}: {exc} -->\n'
+
+    lines = markdown_content.split('\n')
+
+    # DEDUPE (owner's decision 0aa, 2026-08-31): where the page already pairs
+    # an `.. exec::` with an explicit `.. source::` for the SAME target — the
+    # hand-authored road four of this repo's five exec-using docs already
+    # take — the auto-render is skipped and the directive line simply goes,
+    # so the page never shows the code twice. The two roads compose instead
+    # of colliding. Document-wide rather than "the source that FOLLOWS":
+    # the property is that the code is already present, and a page that
+    # shows the source first is not a different case.
+    #
+    # A `.. source::` naming a DIFFERENT file does NOT dedupe — otherwise the
+    # rule silently swallows exactly the unpaired directive it exists to
+    # catch, which is the whole defect. Pinned in tests/test_exec_lane.py.
+    paired: set = set()
+    fence = None
+    for line in lines:
+        head = line.lstrip()[:3]
+        if fence is None and head in ('```', '~~~'):
+            fence = head
+        elif fence is not None and head == fence:
+            fence = None
+        elif fence is None:
+            m = _SOURCE_DIRECTIVE.match(line)
+            if m:
+                paired.add(m.group(1).strip())
+
     out: List[str] = []
     fence = None  # the marker that opened the block we are inside, if any
-    for line in markdown_content.split('\n'):
+    skip_options = False
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        i += 1
         head = line.lstrip()[:3]
+        # A directive's own `    :option: value` continuation lines belong to
+        # the directive; dropping the directive without them leaves the
+        # options behind as prose.
+        if skip_options:
+            if line.strip().startswith(':') or not line.strip():
+                if line.strip():
+                    continue
+            skip_options = False
+
         if fence is None and head in ('```', '~~~'):
             fence = head
         elif fence is not None and head == fence:
@@ -133,6 +207,13 @@ def _expand_source_directives(markdown_content: str) -> str:
         elif fence is None and _SOURCE_DIRECTIVE.match(line):
             out.append(expansion(line))
             continue
+        elif fence is None:
+            m = _EXEC_DIRECTIVE.match(line)
+            if m:
+                skip_options = True
+                if exec_target_file(m.group(1)) not in paired:
+                    out.append(exec_expansion(m.group(1)))
+                continue
         out.append(line)
     return '\n'.join(out)
 
@@ -174,7 +255,7 @@ for file in files:
     NAME_CONTENT_MAP[metadata.name] = content
 
     # Pages with a `.. toc::` fill the aside; the shell collapses it for
-    # every other page (lib/aside.py — the full-width /changelog).
+    # every other page (lib/aside.py, 1.6.39 — full-width /changelog).
     if ".. toc::" in content:
         aside.register(metadata.endpoint)
 
@@ -264,5 +345,10 @@ for file in files:
         # TypeError — measured on 2.5.1); the floor in run.py guarantees
         # >= 2.6.0, where a real date is emitted and None omits the tag.
         lastmod=metadata.lastmod,
+        # DIVERGENCE 4: the template passes published_name(endpoint, name)
+        # here. This fork serves `/` from pages/home.py, so markdown.py never
+        # renders the home page and that function's only interesting branch
+        # can never be taken. The contract is pinned on the wire instead —
+        # network_smoke's llms_txt_identity, and the single-h1 sweep.
         llms_doc=_build_llms_doc(metadata.name, metadata.description, expanded, metadata.endpoint),
     )
