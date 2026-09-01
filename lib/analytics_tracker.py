@@ -396,8 +396,29 @@ class AnalyticsTracker:
         it appends; the flush does the disk work.
 
         ``client_ip`` is dropped unless ``ANALYTICS_KEEP_CLIENT_IP=1``.
+
+        INTERNAL TRAFFIC IS DROPPED HERE TOO, before any field is read. The
+        contract at https://2plot.ai/docs/satellite-analytics says a request
+        carrying ``INTERNAL_UA_TOKEN`` is counted NOWHERE, and ``track_visit``
+        has honoured that since the contract existed — but the read table
+        arrived with the 2.8.0 floor and never learned it, so the network's
+        own probes (the hub's hourly health sweep, this repo's link audit,
+        every post-deploy battery) have been landing in ``reads`` and reading
+        as the busiest vendor on the board. "Counted nowhere" includes this
+        table; a fork whose ``reads`` counts internal traffic holds half its
+        own contract.
+
+        Keyed on ``ua``. ``_ledger.EVENT_FIELDS`` names the field ``ua``, not
+        ``user_agent``, and a drop keyed on the wrong name is silently a
+        no-op — which is this fix's own failure mode, so
+        ``tests/test_internal_traffic.py`` asserts the field name against the
+        installed package rather than trusting this comment.
         """
         if not isinstance(event, dict):
+            return
+        from lib.constants import INTERNAL_UA_TOKEN
+
+        if INTERNAL_UA_TOKEN in (event.get("ua") or "").lower():
             return
         row = {k: event.get(k) for k in EVENT_FIELDS}
         if not KEEP_CLIENT_IP:
