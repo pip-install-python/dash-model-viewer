@@ -6,7 +6,7 @@ category: Reference
 order: 1
 package: dash_model_viewer
 icon: mdi:code-braces
-lastmod: 2026-08-08
+lastmod: 2026-09-08
 ---
 
 .. llms_copy::API Reference
@@ -28,7 +28,7 @@ lastmod: 2026-08-08
 | :-- | :-- | :-- | :-- |
 | `id` | `str \| dict` | — | Callback id. Pattern-matching dicts work. |
 | `style` | `dict` | — | **Give it a height.** The element has no intrinsic size. |
-| `class_name` | `str` | — | CSS class on the viewer element. |
+| `class_name` | `str` | — | CSS class on the viewer element, e.g. `class_name="hero-viewer"`. Styles it from `assets/`; the element itself is the styling target, not a wrapper. |
 | `children` | list of `Slot` | — | Hotspots, AR button, poster, progress bar. |
 
 #### Camera
@@ -36,23 +36,23 @@ lastmod: 2026-08-08
 | Prop | Type | Default | Notes |
 | :-- | :-- | :-- | :-- |
 | `camera_controls` | `bool` | `True` | Orbit, zoom, pan. |
-| `touch_action` | `'pan-y' \| 'pan-x' \| 'none'` | `'pan-y'` | Which gestures the page keeps. |
+| `touch_action` | `'pan-y' \| 'pan-x' \| 'none'` | `'pan-y'` | Which gestures the page keeps. The default lets a phone scroll the page vertically *through* the viewer; `touch_action="none"` gives every gesture to the model and is right only for a full-screen viewer. |
 | `camera_orbit` | `str` | — | `"theta phi radius"`. Two-way. |
 | `camera_target` | `str` | — | `"X Y Z"` in metres. |
 | `field_of_view` | `str` | — | e.g. `"30deg"`. |
-| `min_field_of_view` / `max_field_of_view` | `str` | — | Zoom limits. |
-| `min_camera_orbit` / `max_camera_orbit` | `str` | — | `"auto auto auto"` for none. |
+| `min_field_of_view` / `max_field_of_view` | `str` | — | Zoom limits, e.g. `min_field_of_view="15deg"`, `max_field_of_view="45deg"` to stop the user zooming to a blank close-up or losing the model in the distance. |
+| `min_camera_orbit` / `max_camera_orbit` | `str` | — | Orbit limits as `"theta phi radius"`; `"auto auto auto"` for none. `max_camera_orbit="auto 90deg auto"` is the common one — it stops the camera dropping below the floor plane. |
 | `interpolation_decay` | `float` | — | Camera easing. Lower is slower; `0` is a jump cut. |
 | `camera_change_debounce` | `float` | `100` | Milliseconds. **Do not set to 0 without meaning it.** |
 
 #### Rendering
 
-| Prop | Type | Default |
-| :-- | :-- | :-- |
-| `poster` | `str` | — |
-| `tone_mapping` | `str` | `'neutral'` |
-| `shadow_intensity` | `float` | — |
-| `variant_name` | `str \| None` | `None` |
+| Prop | Type | Default | Notes |
+| :-- | :-- | :-- | :-- |
+| `poster` | `str` | — | Image shown until the model is ready, e.g. `poster="/assets/astronaut.png"`. Worth setting for a large `.glb`: without one the viewer is an empty box for the whole download. |
+| `tone_mapping` | `str` | `'neutral'` | |
+| `shadow_intensity` | `float` | — | |
+| `variant_name` | `str \| None` | `None` | |
 
 #### Augmented reality
 
@@ -100,7 +100,7 @@ Precedence: **named prop > `mv_*` > `attributes`**.
 | `normal` | `str` | — | `"X Y Z"` surface normal; drives occlusion. |
 | `id` | `str \| dict` | — | Callback id. |
 | `style` | `dict` | — | |
-| `class_name` | `str` | — | Added alongside the built-in `dmv-slot`. |
+| `class_name` | `str` | — | Added alongside the built-in `dmv-slot`, e.g. `class_name="hotspot-dot"` — the built-in class stays, so a rule on `.dmv-slot` still applies. |
 | `n_clicks` | `int` | `0` | Increments on click. Use as an `Input`. |
 
 ---

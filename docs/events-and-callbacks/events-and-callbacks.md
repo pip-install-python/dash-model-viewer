@@ -7,7 +7,7 @@ category: Interaction
 order: 1
 package: dash_model_viewer
 icon: mdi:transit-connection-variant
-lastmod: 2026-08-08
+lastmod: 2026-09-08
 ---
 
 .. llms_copy::Events and Callbacks
@@ -103,17 +103,15 @@ With `pick_on_click=True`, clicking the model reports the 3D position and
 surface normal under the cursor — the raw material for placing a hotspot where
 the user pointed.
 
-```python
-dmv.ModelViewer(id="v", src=..., alt=..., pick_on_click=True)
+.. exec::docs.events-and-callbacks.picking
+    :code: false
 
-@callback(Output("store", "data"), Input("v", "scene_point"))
-def remember(point):
-    # {"position": "0.12m 1.04m 0.33m", "normal": "0 1 0", "uv": [0.5, 0.5]}
-    return point
-```
+.. source::docs/events-and-callbacks/picking.py
 
-Returns `None` when the click misses the mesh, which is the common case near
-the edges — check before using it.
+`scene_point` is `None` both before the first click and whenever a click misses
+the mesh — the common case near the silhouette — so check it before use. `uv`
+is `None` for a model with no texture coordinates; `position` and `normal` are
+always present on a hit.
 
 ---
 

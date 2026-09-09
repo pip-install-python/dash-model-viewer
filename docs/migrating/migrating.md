@@ -7,7 +7,7 @@ category: Getting started
 order: 2
 package: dash_model_viewer
 icon: mdi:transfer-right
-lastmod: 2026-08-08
+lastmod: 2026-09-08
 ---
 
 .. llms_copy::Migrating from 0.0.1
@@ -93,6 +93,7 @@ dmv.ModelViewer(
 | `arButtonText="…"` | `Slot(slot="ar-button", children=…)` | |
 | `customArPrompt=…` | `Slot(slot="ar-prompt", children=…)` | |
 | `customArFailure=…` | `Slot(slot="ar-failure", children=…)` | |
+| `loading_state` | *(none)* | Not this package's removal — Dash 4 dropped `loading_state` from components generally. Use `dcc.Loading`, or `model_state` for this component's own progress. |
 | *(none)* | `camera`, `model_state`, `model_info`, `ar_status`, `ar_tracking`, `scene_point` | The half that never worked. |
 | *(none)* | `attributes`, `mv_*` | Full upstream parity. |
 | *(none)* | `camera_change_debounce` | Mandatory guard. |
