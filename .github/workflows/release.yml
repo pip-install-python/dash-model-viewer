@@ -3,6 +3,9 @@ name: Release
 # Tag-driven publish. Push a v* tag and this verifies, builds, publishes to
 # PyPI via OIDC trusted publishing, and opens a GitHub Release.
 #
+# The checklist that gates a tag is RELEASING.md at the repo root. This file is
+# what runs; that file is what a human works through first.
+#
 # NO API TOKEN IS STORED ANYWHERE. Trusted publishing has PyPI verify a
 # short-lived OIDC token minted by GitHub for this specific repo + workflow +
 # environment, so there is no long-lived secret to leak or rotate.

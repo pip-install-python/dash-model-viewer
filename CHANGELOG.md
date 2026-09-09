@@ -6,7 +6,10 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing yet.
+Nothing yet. 1.0.0 has not been published — PyPI still serves 0.0.1 — so the
+pre-release component review's changes are recorded under `[1.0.0]` below
+rather than here. Once 1.0.0 is tagged, anything further belongs in this
+section.
 
 ## [1.0.0] — 2026-08-21
 
@@ -69,6 +72,35 @@ at the end of this entry.
   `camera_orbit` is two-way, a callback that writes it re-triggers itself. The
   shim suppresses the echo via `event.detail.source`.
 
+- **`src` and `alt` are enforced, not merely documented.** The docstring,
+  `api_metadata.json` and the API reference had all called them required while
+  nothing checked — `ModelViewer()` with neither constructed silently. Omitting
+  either now raises the standard Dash `TypeError` naming the prop, and an
+  explicit `None` fails the same way. `alt` is the entire experience for a
+  screen-reader user; a wrapper that lets you forget it makes the inaccessible
+  case the easy one. 0.0.1's generated metadata declared `id`/`src`/`alt`
+  required, so this restores two of the three; `id` stays optional, because a
+  viewer with no callbacks needs none.
+
+- **A picking example.** `pick_on_click` and `scene_point` were documented from
+  the start and demonstrated nowhere, so nothing would have noticed if the
+  shim's click path broke. `/events-and-callbacks` now runs one.
+
+- **`examples/manual_walk.py`** — a standalone app, dependent on `dash` and this
+  package alone, covering the eight props no documentation page exercises
+  (`poster`, `class_name` on both components, the four camera bounds,
+  `touch_action`) and a viewer whose `src` 404s, so `model_state`'s error
+  payload can be observed rather than merely wired.
+
+- **A release lane.** `.github/workflows/release.yml`: a `v*` tag verifies that
+  the tag matches `pyproject`'s version and that the CHANGELOG documents it,
+  builds, runs the package's own suites against the built wheel, asserts the
+  wheel carries the vendored runtime, then publishes to PyPI by OIDC trusted
+  publishing with no stored token. The wheel-content gate is the one that
+  matters here: the JavaScript is committed rather than built, so a wheel
+  missing `vendor/model-viewer-umd.min.js` would be dead on arrival and a
+  version cannot be re-uploaded to replace it.
+
 ### Removed
 
 - **The build.** No `package.json`, webpack, babel, `dash-generate-components`,
@@ -83,6 +115,12 @@ at the end of this entry.
 
 - `DashModelViewer`. The module is now `_components.py`; the old filename is
   retired so a stale copy cannot shadow the new one.
+
+- **`camera["source"]`.** The shim reports camera movement only for user
+  interaction — that is the echo suppression above — so the key could only ever
+  hold the single string `"user-interaction"`. A field with one possible value
+  tells a reader nothing and implies another value is reachable. The payload is
+  `{"orbit", "target", "field_of_view"}`. The suppression is unchanged.
 
 ### Migrating from 0.0.1
 
