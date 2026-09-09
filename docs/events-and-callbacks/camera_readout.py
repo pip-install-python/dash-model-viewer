@@ -33,6 +33,5 @@ def show_camera(camera):
     return (
         f"orbit  {camera['orbit']}\n"
         f"target {camera['target']}\n"
-        f"fov    {camera['field_of_view']}\n"
-        f"source {camera['source']}"
+        f"fov    {camera['field_of_view']}"
     )

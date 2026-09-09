@@ -7,7 +7,7 @@ category: Interaction
 order: 1
 package: dash_model_viewer
 icon: mdi:transit-connection-variant
-lastmod: 2026-09-08
+lastmod: 2026-09-09
 ---
 
 .. llms_copy::Events and Callbacks
@@ -28,7 +28,7 @@ Everything below is now an ordinary `Input`.
 
 | Prop | Updates when | Shape |
 | :-- | :-- | :-- |
-| `camera` | the user moves the camera | `{"orbit", "target", "field_of_view", "source"}` |
+| `camera` | the user moves the camera | `{"orbit", "target", "field_of_view"}` |
 | `model_state` | loading, loaded, or failed | `{"status", "progress"}` |
 | `model_info` | on load | `{"dimensions", "variants", "animations"}` |
 | `ar_status` | an AR session changes state | `str` |

@@ -80,7 +80,7 @@ Precedence: **named prop > `mv_*` > `attributes`**.
 
 | Prop | Payload |
 | :-- | :-- |
-| `camera` | `{"orbit": str, "target": str, "field_of_view": str, "source": str}` — only for user interaction |
+| `camera` | `{"orbit": str, "target": str, "field_of_view": str}` — only for user interaction |
 | `model_state` | `{"status": "loading" \| "loaded" \| "error", "progress": float, "detail": str?}` |
 | `model_info` | `{"dimensions": {"x": float, "y": float, "z": float}, "variants": [str], "animations": [str]}` |
 | `ar_status` | `"not-presenting" \| "session-started" \| "object-placed" \| "failed"` |

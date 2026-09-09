@@ -95,7 +95,7 @@ dmv.ModelViewer(
 | `customArFailure=…` | `Slot(slot="ar-failure", children=…)` | |
 | `loading_state` | *(none)* | Not this package's removal — Dash 4 dropped `loading_state` from components generally. Use `dcc.Loading`, or `model_state` for this component's own progress. |
 | `id`, `src`, `alt` *(declared required)* | `src`, `alt` **enforced** | 0.0.1's generated metadata declared all three required; nothing in 1.0.0 checked until now. `src` and `alt` now raise at construction if missing. `id` stays optional — a viewer with no callbacks needs none. |
-| *(none)* | `camera`, `model_state`, `model_info`, `ar_status`, `ar_tracking`, `scene_point` | The half that never worked. |
+| *(none)* | `camera`, `model_state`, `model_info`, `ar_status`, `ar_tracking`, `scene_point` | The half that never worked. `camera` is `{"orbit", "target", "field_of_view"}` — see below. |
 | *(none)* | `attributes`, `mv_*` | Full upstream parity. |
 | *(none)* | `camera_change_debounce` | Mandatory guard. |
 | *(none)* | `pick_on_click` | Arms `scene_point`. |
@@ -160,6 +160,13 @@ that is the default. See [Augmented reality](/augmented-reality).
 
 ### Things that no longer exist
 
+- **`camera["source"]`** — removed in 1.0.0 before release. The shim reports
+  camera movement *only* for user interaction (that is the echo suppression
+  which stops a callback writing `camera_orbit` from re-triggering itself), so
+  `source` could only ever hold the single string `"user-interaction"`. A key
+  with one possible value tells a reader nothing, and reading it invited the
+  belief that some other value was reachable. The payload is now
+  `{"orbit", "target", "field_of_view"}`. The suppression itself is unchanged.
 - `dash_model_viewer.DashModelViewer` — renamed.
 - The generated R and Julia bindings — removed; they were generated and unused.
 - `package-info.json` inside the package — `__version__` now comes from

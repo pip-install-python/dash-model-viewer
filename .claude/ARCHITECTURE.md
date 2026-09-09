@@ -258,7 +258,7 @@ is why the hub's `camera_views_example.py` is 231 lines of clientside callback.
 
 | Prop | Fires on | Shape |
 |---|---|---|
-| `camera` | `camera-change`, debounced | `{"orbit": str, "target": str, "field_of_view": str, "source": str}` |
+| `camera` | `camera-change`, debounced | `{"orbit": str, "target": str, "field_of_view": str}` — no `source`; see below |
 | `model_state` | `load`, `error`, `progress` | `{"status": "loading"\|"loaded"\|"error", "progress": float}` |
 | `model_info` | `load` | `{"dimensions": {...}, "variants": [...], "animations": [...]}` |
 | `ar_status` | `ar-status` | `str` — `session-started`, `object-placed`, `failed`, … |
@@ -294,6 +294,15 @@ into JS to get.
 Default: `camera_change_debounce=100` (ms). `0` is permitted and documented as
 "you are asking for the storm". Both the debounce and the echo suppression need
 a test; neither fails loudly.
+
+The suppression used to leak into the payload as a `source` key. Because the
+guard returns for anything that is not `"user-interaction"`, that key could only
+ever hold the one string — a field with a single possible value, which tells a
+reader nothing and implies another value is reachable. Removed before the 1.0.0
+release (owner's decision 0cj, 2026-09-09); the suppression itself is unchanged.
+`tests/test_components.py` pins the payload's keys to the documented set and
+asserts the guard is still there, because removing the guard and removing the
+key look similar in a diff and only one of them is correct.
 
 ---
 

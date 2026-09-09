@@ -139,9 +139,9 @@ class ModelViewer(Component):
     Read-only props, updated by the component:
 
     - camera (dict):
-        ``{"orbit", "target", "field_of_view", "source"}``. Only user
-        interaction is reported — programmatic changes are suppressed, or a
-        callback that writes ``camera_orbit`` would re-trigger itself.
+        ``{"orbit", "target", "field_of_view"}``. Only user interaction is
+        reported — programmatic changes are suppressed, or a callback that
+        writes ``camera_orbit`` would re-trigger itself.
 
     - model_state (dict):
         ``{"status": "loading" | "loaded" | "error", "progress": float}``.

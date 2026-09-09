@@ -235,9 +235,12 @@
 
                 function emit() {
                     cameraTimer = null;
-                    var camera = readCamera(el);
-                    camera.source = source;
-                    setProps({camera: camera});
+                    /* No `source` key (owner's decision 0cj). The guard above
+                       returns for anything that is not "user-interaction", so
+                       the field could only ever hold that one string — a
+                       payload key carrying zero information. The suppression
+                       it came from is still right and still here. */
+                    setProps({camera: readCamera(el)});
                 }
 
                 if (cameraTimer) {

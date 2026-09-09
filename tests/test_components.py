@@ -7,6 +7,7 @@ defect that shipped in 0.0.1 without anybody noticing.
 from __future__ import annotations
 
 import json
+import re
 import pathlib
 
 import pytest
@@ -59,6 +60,50 @@ def test_shim_suppresses_programmatic_camera_events():
     """Without the source check, a callback writing camera_orbit loops."""
     shim = (PKG / "dash_model_viewer.js").read_text(encoding="utf-8")
     assert 'source !== "user-interaction"' in shim
+
+
+#: The camera payload, as documented in the docstring, the API reference and
+#: the events page. Owner's decision 0cj removed "source" from it.
+CAMERA_KEYS = {"orbit", "target", "field_of_view"}
+
+
+def test_camera_payload_keys_are_exactly_the_documented_set():
+    """Owner's decision 0cj.
+
+    `source` was suppression bookkeeping that leaked into the payload: the
+    guard above returns for anything that is not "user-interaction", so the
+    key could only ever hold that one string. A field with one possible value
+    tells a reader nothing and implies another value is reachable.
+
+    The payload is assembled in JavaScript, so this reads the shim. Asserting
+    the ASSIGNMENTS rather than searching for the word "source" — the word is
+    still legitimately in the file, in the suppression guard that must stay.
+    """
+    shim = (PKG / "dash_model_viewer.js").read_text(encoding="utf-8")
+    body = shim[shim.index("function readCamera"):]
+    body = body[:body.index("return camera;")]
+    assigned = set(re.findall(r"camera\.(\w+)\s*=", body))
+    assert assigned == CAMERA_KEYS, f"readCamera builds {sorted(assigned)}"
+
+    # And nothing re-attaches it on the way out.
+    assert "camera.source" not in shim
+    # The suppression it came from is still in place.
+    assert 'source !== "user-interaction"' in shim
+
+
+def test_camera_payload_matches_every_document_that_describes_it():
+    """Three artifacts describe this payload; drift between them is the defect
+    0cj existed to remove, so pin them to each other rather than to a literal."""
+    docstring = dmv.ModelViewer.__doc__
+    assert '``{"orbit", "target", "field_of_view"}``' in docstring
+    assert "source" not in docstring.split("- camera (dict):")[1].split("- model_state")[0]
+
+    repo = pathlib.Path(__file__).resolve().parent.parent
+    reference = (repo / "docs/api-reference/api-reference.md").read_text(encoding="utf-8")
+    camera_row = next(ln for ln in reference.splitlines() if ln.startswith("| `camera` |"))
+    assert '"source"' not in camera_row
+    for key in CAMERA_KEYS:
+        assert f'"{key}"' in camera_row
 
 
 # --------------------------------------------------------------------------

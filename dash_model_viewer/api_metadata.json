@@ -62,7 +62,7 @@
     },
     {
      "default": "",
-     "description": "`{\"orbit\", \"target\", \"field_of_view\", \"source\"}`. Only user interaction is reported \u2014 programmatic changes are suppressed, or a callback that writes `camera_orbit` would re-trigger itself.",
+     "description": "`{\"orbit\", \"target\", \"field_of_view\"}`. Only user interaction is reported \u2014 programmatic changes are suppressed, or a callback that writes `camera_orbit` would re-trigger itself.",
      "name": "camera",
      "required": false,
      "type": "dict"
@@ -293,5 +293,5 @@
    ]
   }
  ],
- "generated": "2026-08-30"
+ "generated": "2026-09-09"
 }
