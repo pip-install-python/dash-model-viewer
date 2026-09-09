@@ -1,0 +1,220 @@
+name: Release
+
+# Tag-driven publish. Push a v* tag and this verifies, builds, publishes to
+# PyPI via OIDC trusted publishing, and opens a GitHub Release.
+#
+# NO API TOKEN IS STORED ANYWHERE. Trusted publishing has PyPI verify a
+# short-lived OIDC token minted by GitHub for this specific repo + workflow +
+# environment, so there is no long-lived secret to leak or rotate.
+#
+# ONE-TIME SETUP ON PyPI, and it must be CREATED for this project — unlike the
+# other packages in the fleet, `dash-model-viewer` has a 0.0.1 on PyPI that was
+# uploaded (2025-04-17) before trusted publishing existed here, so there is no
+# publisher to confirm; there is one to add:
+#   pypi.org -> dash-model-viewer -> Publishing -> Add a new pending publisher
+#     Owner:            pip-install-python
+#     Repository:       dash-model-viewer
+#     Workflow name:    release.yml
+#     Environment name: pypi
+# Until that exists, the publish job fails with an opaque 403 and nothing is
+# uploaded. The owner holds both halves: this configuration, and the tag.
+#
+# WHY THIS FILE DIFFERS FROM THE FLEET'S REFERENCE LANE (dash-excalidraw):
+#   * No `setup-node`. This package has no JS build — no package.json, no
+#     webpack, no babel. The shim and Google's UMD bundle are COMMITTED as
+#     package data and vendored deliberately (.claude/ARCHITECTURE.md). A node
+#     step here would be cargo cult.
+#   * No `scripts/check_release.py` / `scripts/smoke_test.py`. This repo has
+#     neither; its equivalent gates are the package's own three suites and the
+#     wheel-content assertion below, both lifted from ci.yml's `package-matrix`
+#     so the release lane and CI assert the SAME property.
+#   * The tag/version comparison parses pyproject with `tomllib`, not a regex.
+#     A regex over a language construct is how this fork most recently printed
+#     a confident wrong answer (CLAUDE.md's verification traps); the version is
+#     the one string that must not be guessed on a release.
+#   * Action versions match THIS tree (checkout@v4, setup-python@v5), not the
+#     reference lane's. Dependabot owns the bumps; a release lane pinned
+#     differently from ci.yml/cd.yml would be unrecorded drift.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and verify, but publish to TestPyPI instead of PyPI"
+        type: boolean
+        default: true
+
+# Read-only by default; the two jobs that need more ask for it themselves
+# (`id-token: write` to publish, `contents: write` to cut the GitHub Release).
+permissions:
+  contents: read
+
+# Never let two releases race. NOT cancel-in-progress: a half-cancelled publish
+# is the one state worth avoiding here, because a version can be uploaded to
+# PyPI exactly once and is not replaceable afterwards.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify the tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # The fleet Python (SYNC-1.6.22-1.6.29 item 5). A singleton literal
+          # is a choice, not a measurement: the only Python that MEASURES
+          # anything here is ci.yml's `package-matrix`, which tests pyproject's
+          # `requires-python` claim against the built wheel.
+          python-version: "3.14"
+
+      - name: Tag must match the version in pyproject.toml
+        # Catches the classic release mistake: bumping the code but tagging the
+        # old number, or the reverse. PyPI would accept the mismatch happily
+        # and the number would then be spent.
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PY_VER=$(python -c "import tomllib,pathlib;print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "tag=$TAG  pyproject=$PY_VER"
+          if [ "$TAG" != "$PY_VER" ]; then
+            echo "::error::Tag v$TAG does not match pyproject version $PY_VER"
+            exit 1
+          fi
+
+      - name: CHANGELOG must have a section for this version
+        # The GitHub Release body is extracted from CHANGELOG.md below. If the
+        # section is missing the release still ships, with "See CHANGELOG.md"
+        # as its entire body — a silently threadbare release. Fail here instead.
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! grep -qF "## [$VERSION]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## [$VERSION]' section"
+            exit 1
+          fi
+          echo "CHANGELOG.md documents $VERSION"
+
+  build:
+    name: Build distributions
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine check dist/*
+
+      - name: The package's own suites, against the built wheel
+        # Installs ONLY the wheel plus Dash — never requirements.txt. The same
+        # property ci.yml's `package-matrix` asserts: that
+        # `pip install dash-model-viewer` works for someone who has never heard
+        # of this documentation site.
+        run: |
+          python -m pip install "dist/"*.whl
+          python -m pip install dash pytest
+          pytest tests/test_components.py tests/test_index_order.py \
+                 tests/test_no_regeneration.py -q
+
+      - name: The wheel carries the vendored runtime and nothing else
+        # THE fork-specific release gate. This package's JavaScript is committed
+        # package data, not a build product, so the one defect that would ship a
+        # dead wheel is the vendored bundle silently missing from it — and a
+        # version cannot be re-uploaded to fix that. Identical assertion to
+        # ci.yml's `package-matrix`, deliberately duplicated: CI proves it for a
+        # commit, this proves it for the artifact actually being published.
+        run: |
+          python - <<'PY'
+          import glob, zipfile
+          wheel = glob.glob("dist/*.whl")[0]
+          names = zipfile.ZipFile(wheel).namelist()
+          allowed_prefixes = ("dash_model_viewer/", "dash_model_viewer-")
+          stray = [n for n in names if not n.startswith(allowed_prefixes)]
+          assert not stray, f"docs site leaked into the wheel: {stray}"
+          for required in ("dash_model_viewer/vendor/model-viewer-umd.min.js",
+                           "dash_model_viewer/vendor/model-viewer-LICENSE",
+                           "dash_model_viewer/dash_model_viewer.js"):
+              assert required in names, f"missing from wheel: {required}"
+          print(f"{wheel}: {len(names)} entries, all in-package")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The environment name must match the pending publisher configured on PyPI.
+    # Add a required reviewer on this environment in repo settings for a human
+    # approval gate between the tag and the upload.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dash-model-viewer
+    permissions:
+      # `id-token: write` is what lets GitHub mint the OIDC token PyPI checks.
+      # Without it trusted publishing fails with an opaque 403.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to TestPyPI (manual dry run)
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub Release
+    needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Extract this version's CHANGELOG section
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" {found=1; next}
+            found && /^## \[/ {exit}
+            found {print}
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "See CHANGELOG.md for details." > release-notes.md
+          fi
+          cat release-notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: dist/*
+          generate_release_notes: true
