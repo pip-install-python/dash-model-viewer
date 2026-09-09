@@ -203,6 +203,20 @@ class ModelViewer(Component):
     ]
     available_properties = _prop_names
 
+    #: Enforced, not merely documented (owner's decision 0ch, 2026-09-09).
+    #:
+    #: The docstring, ``api_metadata.json`` and the API reference had all called
+    #: these required since 1.0.0 while nothing checked: ``ModelViewer()`` with
+    #: neither prop constructed silently. 0.0.1's generated metadata declared
+    #: ``id``/``src``/``alt`` required, so this is a restoration for two of the
+    #: three — ``id`` stays optional because a viewer with no callbacks needs no
+    #: id, which was over-strict in 0.0.1.
+    #:
+    #: ``alt`` is not decorative: it is the entire experience for a screen-reader
+    #: user, and a wrapper that lets you forget it makes the inaccessible case
+    #: the easy one.
+    _required_props = ["src", "alt"]
+
     _valid_wildcard_attributes = ["mv_"]
     available_wildcard_properties = ["mv_"]
 
@@ -278,6 +292,13 @@ class ModelViewer(Component):
         }
         args = {k: v for k, v in args.items() if v is not None}
         args.update(kwargs)
+        # Dash's own wording, so the message a user sees here is the message
+        # they see from every other component. Checked AFTER the None filter on
+        # purpose: `alt=None` is not an accessible description, so passing the
+        # keyword explicitly as None must fail exactly like omitting it.
+        for k in self._required_props:
+            if k not in args:
+                raise TypeError("Required argument `" + k + "` was not specified.")
         super().__init__(children=children, **args)
 
 

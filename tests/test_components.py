@@ -6,6 +6,7 @@ defect that shipped in 0.0.1 without anybody noticing.
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import pytest
@@ -171,6 +172,44 @@ def test_mv_wildcard_is_accepted():
 def test_unknown_prop_still_rejected():
     with pytest.raises(TypeError):
         dmv.ModelViewer(id="v", src="/m.glb", alt="a", definitely_not_a_prop=1)
+
+
+def test_src_and_alt_are_enforced_not_merely_documented():
+    """Owner's decision 0ch.
+
+    The docstring, api_metadata.json and the API reference all called these
+    required from 1.0.0 while nothing checked — `ModelViewer()` with neither
+    constructed silently. The gap mattered most for `alt`, which is the entire
+    experience for a screen-reader user: a wrapper that lets you forget it
+    makes the inaccessible case the easy one.
+    """
+    assert dmv.ModelViewer._required_props == ["src", "alt"]
+
+    with pytest.raises(TypeError, match=r"Required argument `src`"):
+        dmv.ModelViewer()
+    with pytest.raises(TypeError, match=r"Required argument `alt`"):
+        dmv.ModelViewer(src="/m.glb")
+    with pytest.raises(TypeError, match=r"Required argument `src`"):
+        dmv.ModelViewer(alt="a model")
+
+    # An explicit None must fail exactly like an omission — `alt=None` is not
+    # an accessible description, and the None filter runs before the check.
+    with pytest.raises(TypeError, match=r"Required argument `alt`"):
+        dmv.ModelViewer(src="/m.glb", alt=None)
+
+    # And the working case still works, with nothing else required.
+    viewer = dmv.ModelViewer(src="/m.glb", alt="a model")
+    assert viewer.src == "/m.glb" and viewer.alt == "a model"
+    assert not hasattr(viewer, "id"), "id must stay optional"
+
+
+def test_required_props_agree_with_the_generated_metadata():
+    """The two artifacts that must move together (0ch): the component's own
+    enforcement and the committed extract /api and the sitemap read."""
+    meta = json.loads((PKG / "api_metadata.json").read_text(encoding="utf-8"))
+    model_viewer = next(c for c in meta["components"] if c["name"] == "ModelViewer")
+    declared = sorted(p["name"] for p in model_viewer["props"] if p.get("required"))
+    assert declared == sorted(dmv.ModelViewer._required_props)
 
 
 def test_shim_precedence_named_over_wildcard_over_attributes():

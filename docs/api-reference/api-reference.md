@@ -6,7 +6,7 @@ category: Reference
 order: 1
 package: dash_model_viewer
 icon: mdi:code-braces
-lastmod: 2026-09-08
+lastmod: 2026-09-09
 ---
 
 .. llms_copy::API Reference
@@ -16,6 +16,11 @@ lastmod: 2026-09-08
 ### `dmv.ModelViewer`
 
 #### Required
+
+**Enforced.** Omitting either raises a `TypeError` at construction naming the
+missing prop — the same error, in the same words, that every Dash component
+raises for a required argument. Passing the keyword explicitly as `None` fails
+the same way, because `alt=None` is not an accessible description.
 
 | Prop | Type | Notes |
 | :-- | :-- | :-- |
