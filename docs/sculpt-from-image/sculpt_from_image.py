@@ -5,7 +5,7 @@ from dash import Input, Output, State, callback, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import build_stream, sculptor, spend, uploads
+from lib import build_stream, model_picker, sculptor, spend, uploads
 
 #: 4 MB, the same cap /texture-upload states, from the same module. A vision
 #: model resizes anything larger anyway, so a bigger allowance would buy a
@@ -23,6 +23,11 @@ component = html.Div(
         dcc.Store(id="si-image"),
         dcc.Store(id="si-run"),
         dcc.Interval(id="si-poll", interval=700, disabled=True),
+        dmc.Group(
+            model_picker.components("si", sculptor.MODEL, w=260),
+            mb="xs",
+        ),
+        dmc.Text(id="si-model-status", size="xs", c="dimmed", mb="xs"),
         dmc.Group(
             [
                 dcc.Upload(
@@ -129,15 +134,17 @@ def accept_image(contents, filename):
     Input("si-go", "n_clicks"),
     State("si-image", "data"),
     State("si-hint", "value"),
+    State("si-model", "value"),
     prevent_initial_call=True,
 )
-def start(_, image, hint):
+def start(_, image, hint, model):
     if not image:
         return no_update, no_update, no_update, no_update, no_update
     run_id = build_stream.new_run()
     threading.Thread(
         target=sculptor.sculpt_image_streaming,
         args=(run_id, image, hint or ""),
+        kwargs={"model": model or sculptor.MODEL},
         daemon=True,
     ).start()
     return run_id, False, True, "block", True
@@ -225,3 +232,6 @@ def show_budget(_):
         False,
         "gray",
     )
+
+
+model_picker.register("si")

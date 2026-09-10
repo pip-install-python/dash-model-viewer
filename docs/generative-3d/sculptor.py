@@ -5,7 +5,7 @@ from dash import ALL, Input, Output, State, callback, ctx, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import build_stream, sculptor
+from lib import build_stream, model_picker, sculptor
 
 IDEAS = [
     "a brutalist lighthouse at dusk, weathered concrete and one warm light",
@@ -35,6 +35,11 @@ component = html.Div(
         # other's parts.
         dcc.Store(id="g3-run"),
         dcc.Interval(id="g3-poll", interval=700, disabled=True),
+        dmc.Group(
+            model_picker.components("g3", sculptor.MODEL, w=260),
+            mb="xs",
+        ),
+        dmc.Text(id="g3-model-status", size="xs", c="dimmed", mb="xs"),
         dmc.Group(
             [
                 dmc.TextInput(
@@ -139,9 +144,10 @@ def use_idea(clicks):
     Output("g3-prompt", "disabled"),
     Input("g3-go", "n_clicks"),
     State("g3-prompt", "value"),
+    State("g3-model", "value"),
     prevent_initial_call=True,
 )
-def start_sculpt(_, prompt):
+def start_sculpt(_, prompt, model):
     """Start the build and return immediately.
 
     This used to be the whole thing: one callback that blocked for ~35 seconds
@@ -157,6 +163,7 @@ def start_sculpt(_, prompt):
     threading.Thread(
         target=sculptor.sculpt_streaming,
         args=(run_id, prompt),
+        kwargs={"model": model or sculptor.MODEL},
         daemon=True,
     ).start()
     return run_id, False, True, "block", True, True
@@ -240,3 +247,6 @@ def poll(_, run_id, prompt):
         latest_src, no_update, no_update, no_update, no_update, no_update,
         progress, no_update, no_update, no_update, no_update,
     )
+
+
+model_picker.register("g3")

@@ -6,7 +6,7 @@ category: Reference
 order: 3
 package: dash_model_viewer
 icon: mdi:chart-box-outline
-lastmod: 2026-08-09
+lastmod: 2026-09-10
 ---
 
 .. llms_copy::Benchmark

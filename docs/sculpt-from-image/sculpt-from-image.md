@@ -101,3 +101,27 @@ is the same `lib/build_stream.py` seam `/generative-3d` uses; see
 [Generative 3D](/generative-3d#it-takes-about-35-seconds-and-it-has-to-say-so)
 for why the progress store is a file rather than a dict, and why streaming per
 part must never become charging per part.
+
+---
+
+### Choosing the model
+
+The dropdown offers the Claude models, plus the GPT models when
+`CHATGPT_API_KEY` is set on the host. The line under it always says which you
+are getting and why — an absent model needs explaining, or it reads as a broken
+page.
+
+Two things decide what appears:
+
+- **Discovery.** The GPT list is fetched from `GET /v1/models` on this host's
+  own key at boot, not written into the source. A model id that has been
+  retired would otherwise be an outage the first time somebody selected it.
+- **Pricing.** A model is offered only if this build can also *price* it.
+  `lib/spend.py` prices an unknown model at `$0.00`, so an unpriced model would
+  pass the budget ceiling as though it were free rather than failing against
+  it. Discovery decides what exists; pricing decides what is safe to meter.
+
+The list is filled when the page is **viewed**, not when it is imported. Page
+modules are imported while Dash registers pages — before `run.py` warms
+discovery — so a layout that read the list at import froze the Claude-only set
+permanently, whatever key was set. See `lib/model_picker.py`.

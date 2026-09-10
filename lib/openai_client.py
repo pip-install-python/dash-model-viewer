@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
@@ -61,6 +62,11 @@ LABELS = {
     "gpt-5.6-luna": "GPT-5.6 Luna",
 }
 
+#: Discovery is retried because the failure seen in practice is a transient
+#: truncated read of a ~20 KB body, which succeeds on the next attempt.
+DISCOVERY_ATTEMPTS = 3
+DISCOVERY_BACKOFF_SECONDS = 0.4
+
 _discovered: Optional[List[str]] = None
 _discovery_error: str = ""
 
@@ -77,13 +83,35 @@ def available() -> bool:
     return bool(api_key())
 
 
+def _read_body(response) -> bytes:
+    """Read a response to the end in chunks.
+
+    A single `response.read()` on a ~20 KB body can come back short and raise
+    `http.client.IncompleteRead`; it happens intermittently to this endpoint.
+
+    A TRUNCATED BODY IS A FAILURE, NOT A RESULT. It would be easy to keep the
+    partial bytes and carry on, and that is the wrong call: a half-read
+    `/v1/models` parses as a SHORTER model list, and `offered_models()` would
+    then quietly stop offering whatever fell off the end. A model silently
+    missing from a dropdown is far worse than a page saying discovery failed,
+    so the exception is allowed out and `discover_models` retries.
+    """
+    chunks = []
+    while True:
+        chunk = response.read(65536)
+        if not chunk:
+            break
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _get(path: str, timeout: float) -> Dict[str, Any]:
     request = urllib.request.Request(
         f"{API_ROOT}{path}",
         headers={"Authorization": f"Bearer {api_key()}"},
     )
     with urllib.request.urlopen(request, timeout=timeout) as response:
-        return json.loads(response.read().decode("utf-8"))
+        return json.loads(_read_body(response).decode("utf-8"))
 
 
 def discover_models(timeout: float = 10.0, force: bool = False) -> List[str]:
@@ -100,12 +128,40 @@ def discover_models(timeout: float = 10.0, force: bool = False) -> List[str]:
         _discovered, _discovery_error = [], "no API key is set"
         return _discovered
     try:
-        payload = _get("/models", timeout)
+        # Retried because the observed failure is a TRANSIENT truncated read,
+        # not a refusal: the same request succeeds on the next attempt. This
+        # runs once per process, so a couple of tries costs nothing and buys
+        # the feature for the whole process lifetime — where giving up would
+        # cost the OpenAI models until the next deploy.
+        payload = None
+        last: Optional[Exception] = None
+        for attempt in range(DISCOVERY_ATTEMPTS):
+            try:
+                payload = _get("/models", timeout)
+                break
+            except Exception as exc:  # noqa: BLE001  (see the clause below)
+                last = exc
+                if attempt + 1 < DISCOVERY_ATTEMPTS:
+                    time.sleep(DISCOVERY_BACKOFF_SECONDS * (attempt + 1))
+        if payload is None:
+            raise last if last else RuntimeError("discovery failed")
         _discovered = sorted(
             m["id"] for m in payload.get("data", []) if isinstance(m, dict) and m.get("id")
         )
         _discovery_error = ""
-    except (urllib.error.URLError, TimeoutError, ValueError, KeyError) as exc:
+    except Exception as exc:  # noqa: BLE001
+        # DELIBERATELY BROAD, and this is the one place it is right.
+        #
+        # `warm()` runs on the boot path in run.py. Anything this raises takes
+        # the whole site down before it serves a page, so the only acceptable
+        # behaviour is to degrade. A narrower clause already failed once here:
+        # it listed URLError, TimeoutError, ValueError and KeyError, and
+        # `http.client.IncompleteRead` — which is an HTTPException and none of
+        # those — escaped it and propagated out of boot.
+        #
+        # Enumerating exception types from a third-party transport is guessing
+        # at a list nobody publishes. The degraded state is well-defined (no
+        # OpenAI models, with the reason on the page), so take it for anything.
         _discovered, _discovery_error = [], f"{type(exc).__name__}: {exc}"
     return _discovered
 

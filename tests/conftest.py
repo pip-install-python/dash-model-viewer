@@ -50,7 +50,17 @@ SECRET_ENV_KEYS = (
     # with a real key in .env would otherwise have the suite make BILLED API
     # calls — silently, and on every run. Blanked here so the generative page
     # fails closed in tests exactly as it does on a host with no key set.
+    #
+    # CHATGPT_API_KEY / OPENAI_API_KEY were MISSING from this list for the
+    # whole of the OpenAI provider's first day, and the gap did exactly what
+    # the paragraph above predicts: `run.py` warms model discovery at boot, the
+    # `client` fixture imports run.py, and the suite began calling
+    # api.openai.com on every run — with retries, which is what finally made it
+    # visible as a two-minute timeout rather than as a bill. Any new provider
+    # goes here in the same commit that reads its key;
+    # `test_no_provider_key_escapes_the_conftest_blanking` now enforces that.
     "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "GEMINI_API_KEY",
+    "CHATGPT_API_KEY", "OPENAI_API_KEY",
 )
 for _key in SECRET_ENV_KEYS:
     os.environ[_key] = ""

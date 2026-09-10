@@ -33,7 +33,7 @@ import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, dcc, html, no_update
 
 import dash_model_viewer as dmv
-from lib import spend
+from lib import model_picker, spend
 from lib.sculptor import MAX_TOKENS, sculpt
 
 MAX_VARIANTS = 4
@@ -147,13 +147,17 @@ component = dmc.Stack(
                 id="bm-models",
                 label="Models to compare",
                 value=["claude-haiku-4-5", "claude-opus-5"],
-                children=dmc.Group([dmc.Checkbox(label=m["label"], value=m["value"])
-                                    for m in spend.model_options()], gap="md"),
+                # Children filled on first render — see lib/model_picker.py.
+                # Built at import, this froze the Anthropic-only list because
+                # pages are imported before run.py warms OpenAI discovery.
+                children=dmc.Group(id="bm-model-boxes", gap="md"),
             ),
+            dcc.Interval(id="bm-model-init", interval=150, max_intervals=1),
+            dmc.Text(id="bm-model-status", size="xs", c="dimmed"),
             dmc.Grid(gutter="md", children=[
                 dmc.GridCol(dmc.Select(
                     id="bm-fixed-model", label="Fixed model",
-                    data=spend.model_options(), value="claude-opus-5",
+                    data=[], value="claude-opus-5",
                 ), span={"base": 12, "sm": 4}),
                 dmc.GridCol(dmc.Select(
                     id="bm-fixed-effort", label="Fixed effort",
@@ -301,3 +305,21 @@ def _run(_clicks, axis, efforts, budgets, models, f_model, f_effort, f_budget, p
         _panel(r, f"bm-view-{run_id}-{i}") for i, r in enumerate(results)
     ])
     return grid, status, "green" if len(ok) == len(results) else "yellow"
+
+
+@callback(
+    Output("bm-model-boxes", "children"),
+    Output("bm-fixed-model", "data"),
+    Output("bm-model-status", "children"),
+    Input("bm-model-init", "n_intervals"),
+)
+def _fill_models(_n):
+    """Fill both model controls when the page is VIEWED.
+
+    Page modules are imported while Dash registers pages, which is BEFORE
+    run.py calls openai_client.warm(). Reading the list at import froze the
+    Anthropic-only set into this page and no OpenAI key could ever change it.
+    """
+    options = spend.model_options()
+    boxes = [dmc.Checkbox(label=m["label"], value=m["value"]) for m in options]
+    return boxes, options, model_picker.status_line()

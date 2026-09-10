@@ -25,9 +25,19 @@ def _clean_state(monkeypatch):
 
 
 def _response(payload):
+    """A stand-in that behaves like a real response STREAM.
+
+    `read()` hands the body over once and then returns b"" — which is what
+    urllib does and what `_read_body`'s chunked loop terminates on. A mock
+    whose `read()` returns the same bytes on every call loops forever; that is
+    not a hypothetical, it is what hung this suite when `_read_body` changed
+    from one `read()` to a loop.
+    """
     body = json.dumps(payload).encode("utf-8")
+    chunks = [body, b""]
+
     fake = mock.MagicMock()
-    fake.read.return_value = body
+    fake.read.side_effect = lambda *a, **k: chunks.pop(0) if chunks else b""
     fake.__enter__ = lambda self: self
     fake.__exit__ = lambda self, *a: False
     return fake
