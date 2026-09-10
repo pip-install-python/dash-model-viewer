@@ -34,7 +34,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from lib import glb, openai_client, spend
+from lib import build_stream, glb, openai_client, spend
 
 MODEL = "claude-opus-5"
 MAX_TOKENS = 4000
@@ -476,6 +476,70 @@ def _sculpt_openai(
             ok=False, reason="The model did not return usable JSON.", **measured
         )
     return _finish(scene, measured)
+
+
+def sculpt_streaming(
+    run_id: str,
+    request: str,
+    style: Optional[str] = None,
+    model: str = MODEL,
+    effort: str = EFFORT,
+    max_tokens: int = MAX_TOKENS,
+) -> SculptResult:
+    """One sculpt, emitting progress as it assembles.
+
+    THE SPEND GATE STILL WRAPS THE BUILD ONCE. Streaming adds no model calls:
+    the model returns the whole parts list in a single response, and what is
+    streamed is the ASSEMBLY of that list into geometry. Emitting per part
+    must never be mistaken for charging per part, which is why this delegates
+    the single metered call to `sculpt()` rather than re-implementing it.
+
+    The progressive `.glb`s are the point: each one is a real, complete model
+    containing the parts so far, so the viewer shows the sculpture appearing
+    piece by piece instead of a spinner followed by a finished object.
+    """
+    build_stream.emit(run_id, {"phase": "asking", "model": model})
+    result = sculpt(
+        request, style=style, model=model, effort=effort, max_tokens=max_tokens
+    )
+    if not result.ok:
+        build_stream.emit(run_id, {"phase": "failed", "reason": result.reason})
+        build_stream.finish(run_id, ok=False, reason=result.reason)
+        return result
+
+    parts = (result.manifest.get("parts") or [])[:MAX_PARTS]
+    build_stream.emit(
+        run_id,
+        {
+            "phase": "assembling",
+            "total": len(parts),
+            "name": result.manifest.get("name", ""),
+            "seconds": round(result.seconds, 1),
+        },
+    )
+
+    for index in range(1, len(parts) + 1):
+        partial = {**result.manifest, "parts": parts[:index]}
+        try:
+            data, _, _ = build(partial)
+        except ValueError:
+            # A prefix that does not stand on its own is not a failure of the
+            # whole build — the finished scene is already known to be valid.
+            continue
+        build_stream.emit(
+            run_id,
+            {
+                "phase": "part",
+                "index": index,
+                "total": len(parts),
+                "part": str(parts[index - 1].get("name") or parts[index - 1].get("shape") or ""),
+                "data_url": to_data_url(data),
+            },
+        )
+
+    build_stream.emit(run_id, {"phase": "done", "total": len(parts)})
+    build_stream.finish(run_id, ok=True)
+    return result
 
 
 def _finish(scene: Dict[str, Any], measured: Dict[str, Any]) -> SculptResult:
