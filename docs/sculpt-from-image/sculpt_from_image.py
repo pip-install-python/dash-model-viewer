@@ -27,7 +27,8 @@ component = html.Div(
             model_picker.components("si", sculptor.MODEL, w=260),
             mb="xs",
         ),
-        dmc.Text(id="si-model-status", size="xs", c="dimmed", mb="xs"),
+        dmc.Text(id="si-model-status", size="xs", c="dimmed"),
+        dmc.Text(id="si-estimate", size="xs", c="dimmed", mb="xs"),
         dmc.Group(
             [
                 dcc.Upload(
@@ -193,7 +194,10 @@ def poll(_, run_id):
         note = f"{manifest.get('name', 'Untitled')} — {manifest.get('notes', '')}"
         if final.get("notes"):
             note += "  ·  " + "; ".join(final["notes"])
-        note += f"  ·  {final.get('part_count', 0)} parts in {final.get('seconds', 0)}s"
+        note += (
+            f"  ·  {final.get('part_count', 0)} parts  ·  "
+            + spend.actual_line(final.get("usd", 0.0), final.get("seconds", 0.0))
+        )
         return (
             final.get("data_url") or latest_src,
             f"A sculpture evoking the uploaded image: {manifest.get('name', 'untitled')}",
@@ -217,21 +221,13 @@ def poll(_, run_id):
 
 
 @callback(
-    Output("si-status", "children", allow_duplicate=True),
-    Output("si-status", "hide", allow_duplicate=True),
-    Output("si-status", "color", allow_duplicate=True),
-    Input("si-upload", "contents"),
-    prevent_initial_call=True,
+    Output("si-estimate", "children"),
+    Input("si-model", "value"),
 )
-def show_budget(_):
-    """What is left, before spending any of it."""
-    left = spend.remaining()
-    return (
-        f"This shared demo has {left.calls_left} calls and "
-        f"${left.usd_left:.2f} of estimated budget left this hour.",
-        False,
-        "gray",
-    )
+def show_estimate(model):
+    """Priced BEFORE the button. A vision call is not free and the visitor is
+    spending the owner's credits, so the number belongs where the decision is."""
+    return spend.estimate_line(model or sculptor.MODEL, sculptor.MAX_TOKENS)
 
 
 model_picker.register("si")

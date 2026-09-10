@@ -265,3 +265,21 @@ The list is filled when the page is **viewed**, not when it is imported. Page
 modules are imported while Dash registers pages — before `run.py` warms
 discovery — so a layout that read the list at import froze the Claude-only set
 permanently, whatever key was set. See `lib/model_picker.py`.
+
+---
+
+### What it costs, before and after
+
+The estimate sits under the model picker and re-prices itself when you change
+the model — choosing Opus over Haiku is choosing a 5x bill, and the only moment
+that is useful is *before* the click. It also shows what is left of this shared
+host's hourly ceiling.
+
+That figure is an **upper bound, not a guess**: `lib/spend.py` prices every
+call as though it used its whole output budget. The number reported after the
+run is measured from the provider's own token counts and is nearly always
+lower.
+
+The result line then says what the run *actually* cost, to four decimal places
+— two would render most sculpts as `$0.00`, which reads as free rather than as
+cheap.

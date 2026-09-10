@@ -136,6 +136,35 @@ def estimate_usd(model: str, max_tokens: int, calls: int = 1) -> float:
     return calls * max_tokens * rate_out / 1_000_000
 
 
+def estimate_line(model: str, max_tokens: int, calls: int = 1) -> str:
+    """What a run could cost, BEFORE the button is pressed.
+
+    /benchmark has shown this since it was written, for a reason worth
+    repeating on every page that spends: "the cost is shown BEFORE you press
+    the button, not after." A demo that bills the owner and only says so
+    afterwards has told the visitor nothing they could act on.
+
+    The number is the same deliberately pessimistic ceiling `estimate_usd`
+    computes — every call priced as if it used its whole output budget — so it
+    is an upper bound rather than a guess, and the actual figure reported after
+    the run is nearly always lower.
+    """
+    estimate = estimate_usd(model, max_tokens, calls)
+    left = remaining()
+    unpriced = "" if PRICING.get(model) else " — this model has no price table entry"
+    return (
+        f"Up to ~${estimate:.3f} for this run"
+        f"{unpriced}. {left.calls_left} calls and ${left.usd_left:.2f} "
+        f"left on this shared host."
+    )
+
+
+def actual_line(usd: float, seconds: float = 0.0) -> str:
+    """What it DID cost, after the fact. Measured from reported token usage."""
+    took = f" in {seconds:.0f}s" if seconds else ""
+    return f"cost ~${usd:.4f}{took}"
+
+
 def _prune(now: float) -> None:
     while _CALLS and now - _CALLS[0] > WINDOW_SECONDS:
         _CALLS.popleft()

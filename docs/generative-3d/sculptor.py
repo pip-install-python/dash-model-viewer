@@ -5,7 +5,7 @@ from dash import ALL, Input, Output, State, callback, ctx, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import build_stream, model_picker, sculptor
+from lib import build_stream, model_picker, sculptor, spend
 
 IDEAS = [
     "a brutalist lighthouse at dusk, weathered concrete and one warm light",
@@ -39,7 +39,8 @@ component = html.Div(
             model_picker.components("g3", sculptor.MODEL, w=260),
             mb="xs",
         ),
-        dmc.Text(id="g3-model-status", size="xs", c="dimmed", mb="xs"),
+        dmc.Text(id="g3-model-status", size="xs", c="dimmed"),
+        dmc.Text(id="g3-estimate", size="xs", c="dimmed", mb="xs"),
         dmc.Group(
             [
                 dmc.TextInput(
@@ -224,8 +225,8 @@ def poll(_, run_id, prompt):
         if final.get("notes"):
             note += "  ·  " + "; ".join(final["notes"])
         note += (
-            f"  ·  {final.get('part_count', 0)} parts in "
-            f"{final.get('seconds', 0)}s"
+            f"  ·  {final.get('part_count', 0)} parts  ·  "
+            + spend.actual_line(final.get("usd", 0.0), final.get("seconds", 0.0))
         )
         return (
             final.get("data_url") or latest_src,
@@ -250,3 +251,16 @@ def poll(_, run_id, prompt):
 
 
 model_picker.register("g3")
+
+
+@callback(
+    Output("g3-estimate", "children"),
+    Input("g3-model", "value"),
+)
+def show_estimate(model):
+    """Priced BEFORE the button, and re-priced when the model changes.
+
+    A visitor choosing Opus over Haiku is choosing a 5x bill, and the only
+    moment that fact is useful is before the click.
+    """
+    return spend.estimate_line(model or sculptor.MODEL, sculptor.MAX_TOKENS)
