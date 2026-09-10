@@ -424,6 +424,164 @@ def prompt_for(request: str, style: Optional[str]) -> str:
     return request if not style else f"{request}\n\nStyle: {style}"
 
 
+#: Appended to SYSTEM when an image is the subject.
+#:
+#: The first line is the one that matters, and it is a promise the page repeats
+#: in prose: this is INTERPRETATION, not reconstruction. Nothing here measures
+#: the photograph — there is no depth estimation, no photogrammetry and no
+#: mesh fitting. The model looks at a picture and composes a sculpture that
+#: evokes it out of the same six primitives everything else on this site uses.
+#: A user who uploads a photo of their car and gets something car-shaped but
+#: not THEIR car has been told, up front, exactly that.
+IMAGE_SYSTEM = """
+YOU ARE LOOKING AT AN IMAGE. Compose a sculpture that EVOKES it — its masses,
+its proportions, its palette, its mood. You are not reconstructing it and you
+cannot: your vocabulary is six primitives, and the result is a sculpture in the
+spirit of the picture rather than a copy of it.
+
+Read the image for:
+- the dominant SHAPES and how they stack or lean
+- the PROPORTIONS — what is tall, what is wide, what is small
+- the PALETTE — sample three or four colours actually present, and reuse them
+- one detail worth keeping, rendered as a small part
+
+Do not attempt text, faces, or fine surface detail. They will not survive the
+vocabulary and they are what makes an interpretation look like a failed copy.
+"""
+
+
+def sculpt_image(
+    image_data_url: str,
+    hint: str = "",
+    model: str = MODEL,
+    effort: str = EFFORT,
+    max_tokens: int = MAX_TOKENS,
+    enforce_budget: bool = True,
+) -> SculptResult:
+    """An uploaded image -> a parts list -> a real `.glb`.
+
+    Same schema, same clamps, same glTF writer and the SAME spend gate as the
+    text path; the only difference is that the model is shown a picture. The
+    image is passed as the data URL the browser produced and is never written
+    anywhere.
+    """
+    meta = dict(model=model, effort=effort, max_tokens=max_tokens)
+    if not image_data_url:
+        return SculptResult(ok=False, reason="Upload an image first.", **meta)
+    if enforce_budget:
+        verdict = spend.check(1, spend.estimate_usd(model, max_tokens))
+        if not verdict.allowed:
+            return SculptResult(ok=False, reason=verdict.reason, **meta)
+    if not available_for(model):
+        return SculptResult(
+            ok=False,
+            reason=(
+                openai_client.status()
+                if provider_of(model) == "openai"
+                else "ANTHROPIC_API_KEY is not set on this host, so this page is off."
+            ),
+            **meta,
+        )
+
+    system = SYSTEM + "\n" + IMAGE_SYSTEM
+    prompt = hint.strip() or "Compose a sculpture evoking this image."
+
+    if provider_of(model) == "openai":
+        started = time.perf_counter()
+        try:
+            scene, usage, stop_reason = openai_client.complete_json(
+                model=model, system=system, prompt=prompt, schema=_schema(),
+                max_tokens=max_tokens, image_data_url=image_data_url,
+            )
+        except Exception as exc:  # noqa: BLE001
+            return SculptResult(ok=False, reason=f"{type(exc).__name__}: {exc}", **meta)
+        in_tok = usage.get("input_tokens", 0)
+        out_tok = usage.get("output_tokens", 0)
+        measured = dict(
+            seconds=time.perf_counter() - started,
+            input_tokens=in_tok, output_tokens=out_tok,
+            usd=spend.record(model, in_tok, out_tok),
+            stop_reason=stop_reason, **meta,
+        )
+        if stop_reason == "length":
+            return SculptResult(
+                ok=False,
+                reason="The output hit max_completion_tokens, so the JSON was cut off.",
+                **measured,
+            )
+        return _finish(scene, measured)
+
+    try:
+        import anthropic
+    except ImportError:
+        return SculptResult(ok=False, reason="The `anthropic` package is not installed.", **meta)
+
+    header, _, payload = image_data_url.partition(",")
+    media_type = header[5:].split(";")[0] if header.startswith("data:") else "image/png"
+
+    client = anthropic.Anthropic()
+    started = time.perf_counter()
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=max_tokens,
+            system=system,
+            output_config={"format": {"type": "json_schema", "schema": _schema()}},
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": payload,
+                        },
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+    except Exception as exc:  # noqa: BLE001
+        return SculptResult(ok=False, reason=f"{type(exc).__name__}: {exc}", **meta)
+
+    usage = getattr(response, "usage", None)
+    in_tok = int(getattr(usage, "input_tokens", 0) or 0)
+    out_tok = int(getattr(usage, "output_tokens", 0) or 0)
+    measured = dict(
+        seconds=time.perf_counter() - started,
+        input_tokens=in_tok, output_tokens=out_tok,
+        usd=spend.record(model, in_tok, out_tok),
+        stop_reason=str(response.stop_reason or ""), **meta,
+    )
+    if response.stop_reason == "refusal":
+        return SculptResult(
+            ok=False, reason="The request was declined by the safety system.", **measured)
+
+    text = next((b.text for b in response.content if b.type == "text"), "")
+    try:
+        scene = json.loads(text)
+    except ValueError:
+        return SculptResult(
+            ok=False, reason="The model did not return usable JSON.", **measured)
+    return _finish(scene, measured)
+
+
+def sculpt_image_streaming(
+    run_id: str,
+    image_data_url: str,
+    hint: str = "",
+    model: str = MODEL,
+    max_tokens: int = MAX_TOKENS,
+) -> SculptResult:
+    """`sculpt_image`, assembled part by part. Charges once, like the text path."""
+    build_stream.emit(run_id, {"phase": "asking", "model": model})
+    result = sculpt_image(
+        image_data_url, hint=hint, model=model, max_tokens=max_tokens
+    )
+    return _stream_assembly(run_id, result)
+
+
 def _sculpt_openai(
     prompt: str, model: str, max_tokens: int, meta: Dict[str, Any]
 ) -> SculptResult:
@@ -502,6 +660,16 @@ def sculpt_streaming(
     result = sculpt(
         request, style=style, model=model, effort=effort, max_tokens=max_tokens
     )
+    return _stream_assembly(run_id, result)
+
+
+def _stream_assembly(run_id: str, result: SculptResult) -> SculptResult:
+    """Emit a finished scene one part at a time.
+
+    Shared by the text and image entry points: the assembly is identical
+    whichever produced the parts list, and a second copy would be a second
+    place for the events to drift out of step with the page that reads them.
+    """
     if not result.ok:
         build_stream.emit(run_id, {"phase": "failed", "reason": result.reason})
         build_stream.finish(run_id, ok=False, reason=result.reason)

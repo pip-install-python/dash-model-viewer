@@ -1,10 +1,8 @@
-import base64
-import binascii
-
 from dash import Input, Output, clientside_callback, callback, dcc, html
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
+from lib import uploads
 from lib.demo_models import ASTRONAUT
 
 #: 4 MiB of decoded image. A base-colour texture larger than this is a slow
@@ -17,42 +15,27 @@ MAX_TEXTURE_BYTES = 4 * 1024 * 1024
 #: Raster formats `model-viewer`'s `createTexture` accepts and a browser will
 #: decode without a plugin. SVG is deliberately absent: it is a scriptable
 #: document, not an image, and this one is handed straight to the DOM.
-ACCEPTED_TYPES = {"image/png": "PNG", "image/jpeg": "JPEG"}
+ACCEPTED_TYPES = uploads.IMAGE_TYPES
 
 
 def validate_texture(contents, filename=None):
     """Check a ``dcc.Upload`` value. Returns ``(data_url_or_None, message)``.
 
+    The rules themselves live in ``lib/uploads.py``, shared with
+    /sculpt-from-image: two pages taking an image from a visitor need the same
+    answers about type, size and what happens to the bytes, and two copies of
+    those answers is two places for them to drift.
+
     Pure, so it can be tested without a browser or a running app. The bytes are
     decoded only to MEASURE them — nothing here writes to disk, and the file
     never leaves the request that carried it.
     """
-    if not contents:
-        return None, ""
-    label = filename or "that file"
-
-    try:
-        header, payload = contents.split(",", 1)
-    except ValueError:
-        return None, f"{label} is not a data URL."
-
-    media_type = header[5:].split(";")[0].lower() if header.startswith("data:") else ""
-    if media_type not in ACCEPTED_TYPES:
-        accepted = " or ".join(sorted(ACCEPTED_TYPES.values()))
-        return None, f"{label} is {media_type or 'of unknown type'} — {accepted} only."
-
-    try:
-        raw = base64.b64decode(payload, validate=True)
-    except (binascii.Error, ValueError):
-        return None, f"{label} is not valid base64 image data."
-
-    if len(raw) > MAX_TEXTURE_BYTES:
-        mb = len(raw) / 1024 / 1024
-        cap = MAX_TEXTURE_BYTES / 1024 / 1024
-        return None, f"{label} is {mb:.1f} MB — the cap is {cap:.0f} MB."
-
-    kb = len(raw) / 1024
-    return contents, f"{ACCEPTED_TYPES[media_type]}, {kb:.0f} KB — applied below."
+    raw, _media_type, message = uploads.decode_image(
+        contents, filename, max_bytes=MAX_TEXTURE_BYTES, accepted=ACCEPTED_TYPES
+    )
+    if raw is None:
+        return None, message
+    return contents, f"{message} — applied below."
 
 
 component = html.Div(

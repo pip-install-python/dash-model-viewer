@@ -185,19 +185,33 @@ def complete_json(
     schema: Dict[str, Any],
     max_tokens: int,
     timeout: float = 120.0,
+    image_data_url: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, int], str]:
     """One structured-output call. Returns `(data, usage, stop_reason)`.
+
+    With `image_data_url`, the user turn carries the image alongside the text
+    and the model is asked to look at it. The data URL is passed through
+    verbatim — it is what the browser produced and what this API accepts, so
+    re-encoding it would only be a chance to corrupt it.
 
     Raises on transport or protocol failure; the caller turns that into a
     SculptResult with a reason, exactly as the Anthropic path does.
     """
+    if image_data_url:
+        user_content: Any = [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": image_data_url}},
+        ]
+    else:
+        user_content = prompt
+
     body = json.dumps(
         {
             "model": model,
             "max_completion_tokens": max_tokens,
             "messages": [
                 {"role": "system", "content": system},
-                {"role": "user", "content": prompt},
+                {"role": "user", "content": user_content},
             ],
             "response_format": {
                 "type": "json_schema",
