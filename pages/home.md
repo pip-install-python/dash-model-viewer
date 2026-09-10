@@ -123,8 +123,11 @@ No regeneration, no release, no waiting.
 
 Built on Google's [`model-viewer`](https://modelviewer.dev/) (Apache-2.0),
 vendored at 4.3.1. Demo models are Google's own `model-viewer` shared assets
-and the Khronos Group's glTF Sample Assets; the Materials Variants Shoe is
-© 2021 Shopify, CC BY 4.0.
+and the Khronos Group's glTF Sample Assets. The CC BY 4.0 models require
+attribution, so: Materials Variants Shoe © 2021 Shopify; Glam Velvet Sofa
+© 2021 Wayfair, LLC (Eric Chadwick); Glass Hurricane Candle Holder © 2021
+Wayfair, LLC (Eric Chadwick). Sheen Chair (© 2020 Wayfair, LLC) and
+Scattering Skull (© 2025 Vladimir Petkovic) are CC0 1.0.
 
 [Source on GitHub](https://github.com/pip-install-python/dash-model-viewer) ·
 [PyPI](https://pypi.org/project/dash-model-viewer/)

@@ -7,7 +7,7 @@ category: Viewing
 order: 2
 package: dash_model_viewer
 icon: mdi:swap-horizontal
-lastmod: 2026-08-08
+lastmod: 2026-09-10
 ---
 
 .. llms_copy::Model Switching and Variants
@@ -41,13 +41,28 @@ def list_variants(info):
     return (info or {}).get("variants") or []
 ```
 
-Switch to the Astronaut and the dropdown empties, because that file has no
-variants. Switch back to the Shoe and its three return. Nothing on the server
-knows anything about either file.
+Switch between the three and the dropdown refills itself each time — five
+names for the sofa, two for the chair, three for the shoe. Nothing on the
+server knows anything about any of those files.
 
 This is the shape of every "user uploads their own model" feature, and it was
 not possible in 0.0.1 — the variant list lived in the browser and there was no
 way to get it out.
+
+.. admonition::Clearing the dropdown must clear the prop
+    :icon: radix-icons:exclamation-triangle
+    :color: orange
+
+    The third callback returns `value or "default"` rather than
+    `no_update`. That looks like a detail and is not: switching models leaves
+    the dropdown empty, and a callback that declines to update leaves
+    `variant_name` holding the variant you picked on the **previous** model —
+    a name the new file does not contain. The viewer then renders the new
+    model with a stale variant request.
+
+    All three models here carry variants, which is deliberate. Only five of
+    the fifteen Khronos sample models do, and a page named for the feature
+    should not offer models that cannot show it.
 
 ---
 

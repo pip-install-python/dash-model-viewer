@@ -2,7 +2,7 @@ from dash import Input, Output, callback, html
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib.demo_models import ASTRONAUT, MOON_HDR
+from lib.demo_models import CANDLE_GLASS, MOON_HDR
 
 # Not one of these is a named prop on ModelViewer. They work anyway.
 PRESETS = {
@@ -23,8 +23,13 @@ component = html.Div(
         ),
         dmv.ModelViewer(
             id="ap-viewer",
-            src=ASTRONAUT,
-            alt="An astronaut re-lit by attributes the package has no named prop for",
+            # Glass, not the astronaut: this page is about lighting attributes,
+            # and physically-based transparency and refraction respond to
+            # `environment-image` and `exposure` far more visibly than a matte
+            # spacesuit does. No camera props here — model-viewer auto-frames,
+            # so swapping the model needs no hand-tuned orbit.
+            src=CANDLE_GLASS,
+            alt="A glass candle holder re-lit by attributes the package has no named prop for",
             shadow_intensity=1,
             style={"width": "100%", "height": "380px"},
         ),
