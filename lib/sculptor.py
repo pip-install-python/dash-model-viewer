@@ -537,7 +537,24 @@ def sculpt_streaming(
             },
         )
 
-    build_stream.emit(run_id, {"phase": "done", "total": len(parts)})
+    # The final event carries what the page needs to settle: the finished
+    # model, the parts list for the spoiler, and the summary line. Without it
+    # the poller would have the geometry but no way to render the result
+    # panel, and would need a second round trip to fetch what the build
+    # already had in hand.
+    build_stream.emit(
+        run_id,
+        {
+            "phase": "done",
+            "total": len(parts),
+            "data_url": result.data_url,
+            "manifest": result.manifest,
+            "notes": result.notes,
+            "part_count": result.part_count,
+            "seconds": round(result.seconds, 1),
+            "usd": round(result.usd, 4),
+        },
+    )
     build_stream.finish(run_id, ok=True)
     return result
 

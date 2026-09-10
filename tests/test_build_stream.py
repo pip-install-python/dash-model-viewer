@@ -269,3 +269,75 @@ def test_a_failed_sculpt_finishes_the_run_with_its_reason(monkeypatch):
     assert state["done"] is True and state["ok"] is False
     assert state["reason"] == "no key"
     assert [e["phase"] for e in state["events"]][-1] == "failed"
+
+
+# --------------------------------------------------------------------------
+# The poller — the collector that sits on the seam today
+# --------------------------------------------------------------------------
+
+
+def _page():
+    import importlib
+    return importlib.import_module("docs.generative-3d.sculptor")
+
+
+def test_the_interval_keeps_running_mid_build():
+    page = _page()
+    run = build_stream.new_run()
+    build_stream.emit(run, {
+        "phase": "part", "index": 2, "total": 5,
+        "data_url": "data:model/gltf-binary;base64,AAA",
+    })
+    out = page.poll(1, run, "x")
+    assert out[0] == "data:model/gltf-binary;base64,AAA", "viewer follows the parts"
+    assert "part 2 of 5" in out[6]
+    assert out[7] is not True, "the Interval must keep polling while building"
+
+
+def test_the_interval_STOPS_when_the_run_finishes():
+    """A timer left running after the build is a request every 700ms, forever,
+    for as long as the tab is open."""
+    page = _page()
+    run = build_stream.new_run()
+    build_stream.emit(run, {
+        "phase": "done", "total": 1, "data_url": "data:model/gltf-binary;base64,ZZZ",
+        "manifest": {"name": "Tower", "notes": "a tower"}, "notes": [],
+        "part_count": 1, "seconds": 3.2, "usd": 0.01,
+    })
+    build_stream.finish(run, ok=True)
+    out = page.poll(9, run, "x")
+    assert out[7] is True, "the Interval must stop on done"
+    assert out[0] == "data:model/gltf-binary;base64,ZZZ"
+    assert "Tower" in out[2]
+    assert out[9] is False and out[10] is False, "button and input re-enabled"
+
+
+def test_the_interval_stops_on_a_failed_run():
+    page = _page()
+    run = build_stream.new_run()
+    build_stream.finish(run, ok=False, reason="ANTHROPIC_API_KEY is not set")
+    out = page.poll(3, run, "x")
+    assert out[7] is True, "a failed run must stop the timer too"
+    assert "ANTHROPIC_API_KEY" in out[2]
+    assert out[3] == "yellow"
+
+
+def test_a_run_belongs_to_the_tab_that_started_it():
+    """The run id lives in a per-tab dcc.Store, so two tabs sculpting at once
+    read their own parts. Polling someone else's id yields their events, which
+    is why the id is a server-generated uuid and never a guessable key."""
+    page = _page()
+    mine = build_stream.new_run()
+    theirs = build_stream.new_run()
+    build_stream.emit(theirs, {
+        "phase": "part", "index": 1, "total": 2,
+        "data_url": "data:model/gltf-binary;base64,THEIRS",
+    })
+    out = page.poll(1, mine, "x")
+    assert out[0] != "data:model/gltf-binary;base64,THEIRS"
+    assert len(mine) == 32 and mine != theirs, "ids are distinct uuids"
+
+
+def test_poll_without_a_run_id_does_nothing():
+    page = _page()
+    assert len(page.poll(1, None, "x")) == 11

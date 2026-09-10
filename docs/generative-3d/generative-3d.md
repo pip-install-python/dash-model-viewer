@@ -7,7 +7,7 @@ category: Generating
 order: 2
 package: dash_model_viewer
 icon: mdi:shape-plus-outline
-lastmod: 2026-08-09
+lastmod: 2026-09-10
 ---
 
 .. llms_copy::Generative 3D Art
@@ -168,29 +168,49 @@ their placement and a coherent palette is not a lookup.
 
 That length changes what the UI owes the user. The first version had no busy
 state at all: you clicked *Sculpt*, nothing moved, and there was no way to tell
-a slow call from a dead one. The fix is Dash's `running=`, which sets props for
-the duration of the callback and restores them after:
+a slow call from a dead one. The second version added Dash's `running=` — a
+spinner and an overlay for the duration of the callback — which is honest but
+is still thirty-five seconds of watching a spinner.
+
+**This page now shows the sculpture being built instead.**
+
+Clicking *Sculpt* starts the build on a background thread and returns
+immediately. A `dcc.Interval` then polls a small progress store, and the viewer
+is re-pointed at each partial model as it arrives, so the piece assembles in
+front of you.
+
+The part worth understanding: **there is nothing to stream out of the model
+call.** One request returns the entire parts list. What streams is the
+*assembly* — `lib/sculptor.py` builds the parts list up one part at a time and
+emits a complete `.glb` at each step:
 
 ```python
-running=[
-    (Output("g3-busy", "visible"), True, False),   # LoadingOverlay
-    (Output("g3-go", "loading"), True, False),     # spinner in the button
-    (Output("g3-prompt", "disabled"), True, False),
-    (Output("g3-working", "display"), "block", "none"),
-]
+for index in range(1, len(parts) + 1):
+    data, _, _ = build({**manifest, "parts": parts[:index]})
+    build_stream.emit(run_id, {"phase": "part", "index": index,
+                               "data_url": to_data_url(data)})
 ```
 
-Two details that are easy to get wrong:
+Each of those is a real model, not a frame of a video, so you can orbit a
+half-finished sculpture.
 
-- **Nothing in `running` may also be an Output the callback returns.** Both
-  would write the same prop and the order is not defined. A test asserts the
-  two sets stay disjoint.
-- **The overlay sits *over* the viewer rather than replacing it**, so the
-  previous sculpture stays on screen while the next one composes. Swapping in a
-  spinner throws away the thing the user is comparing against.
+Details that are easy to get wrong:
 
-The estimate shown to the user is measured, not guessed. An estimate that is
-too low is worse than none: at twenty seconds of "10 to 20 seconds" the user
+- **The progress store is a file, not a dict in memory.** gunicorn's worker
+  count comes from `WEB_CONCURRENCY` in the environment, so a per-process
+  buffer polled by an `Interval` hangs intermittently the moment there is more
+  than one worker — half the polls land on a worker that never saw the run.
+- **Streaming must not become charging per part.** The spend gate wraps the one
+  model call, not the assembly loop; a test asserts the streaming layer records
+  no spend of its own.
+- **The Interval stops when the run ends**, on success or failure. A timer left
+  running is a request every 700 ms for as long as the tab is open.
+- **`take()` is a seam.** It returns what has accumulated and clears it. A
+  websocket collector would call the same function from an event loop — which
+  is why the transport can change without touching the producer.
+
+The estimate shown while composing is measured, not guessed. An estimate that
+is too low is worse than none: at twenty seconds of "10 to 20 seconds" the user
 concludes it has hung and clicks again.
 
 ### Cost

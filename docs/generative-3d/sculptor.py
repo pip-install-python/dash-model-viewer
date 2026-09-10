@@ -1,10 +1,11 @@
 import json
+import threading
 
-from dash import ALL, Input, Output, State, callback, ctx, html, no_update
+from dash import ALL, Input, Output, State, callback, ctx, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import sculptor
+from lib import build_stream, sculptor
 
 IDEAS = [
     "a brutalist lighthouse at dusk, weathered concrete and one warm light",
@@ -24,6 +25,16 @@ VIEWER_ATTRS = {
 
 component = html.Div(
     [
+        # The run id, and the timer that reads it. `dcc.Interval` is the
+        # POLLING collector: it drains `build_stream.take()`, which is the same
+        # seam a websocket collector would read on an event loop. Choosing the
+        # other transport later replaces this component and nothing else.
+        #
+        # The run id lives in a per-tab `dcc.Store`, so a run belongs to the
+        # tab that started it — two tabs sculpting at once do not read each
+        # other's parts.
+        dcc.Store(id="g3-run"),
+        dcc.Interval(id="g3-poll", interval=700, disabled=True),
         dmc.Group(
             [
                 dmc.TextInput(
@@ -120,42 +131,112 @@ def use_idea(clicks):
 
 
 @callback(
+    Output("g3-run", "data"),
+    Output("g3-poll", "disabled"),
+    Output("g3-status", "hide"),
+    Output("g3-working", "display"),
+    Output("g3-go", "loading"),
+    Output("g3-prompt", "disabled"),
+    Input("g3-go", "n_clicks"),
+    State("g3-prompt", "value"),
+    prevent_initial_call=True,
+)
+def start_sculpt(_, prompt):
+    """Start the build and return immediately.
+
+    This used to be the whole thing: one callback that blocked for ~35 seconds
+    behind a loading overlay and then produced a finished object. The build now
+    runs on a background thread and the poller reads parts as they assemble,
+    which is the change the owner asked for.
+
+    A plain thread suffices: the owner reports one gunicorn worker, and the
+    store is file-backed regardless, so a later WEB_CONCURRENCY change on the
+    dashboard cannot silently break the read side.
+    """
+    run_id = build_stream.new_run()
+    threading.Thread(
+        target=sculptor.sculpt_streaming,
+        args=(run_id, prompt),
+        daemon=True,
+    ).start()
+    return run_id, False, True, "block", True, True
+
+
+@callback(
     Output("g3-viewer", "src"),
     Output("g3-viewer", "alt"),
     Output("g3-status", "children"),
     Output("g3-status", "color"),
-    Output("g3-status", "hide"),
+    Output("g3-status", "hide", allow_duplicate=True),
     Output("g3-json", "children"),
-    Input("g3-go", "n_clicks"),
+    Output("g3-working", "children"),
+    Output("g3-poll", "disabled", allow_duplicate=True),
+    Output("g3-working", "display", allow_duplicate=True),
+    Output("g3-go", "loading", allow_duplicate=True),
+    Output("g3-prompt", "disabled", allow_duplicate=True),
+    Input("g3-poll", "n_intervals"),
+    State("g3-run", "data"),
     State("g3-prompt", "value"),
-    # Dash sets each of these to the middle value while the callback runs and
-    # the last value when it finishes. None of them collide with an Output the
-    # callback itself returns — that would race.
-    running=[
-        (Output("g3-busy", "visible"), True, False),
-        (Output("g3-go", "loading"), True, False),
-        (Output("g3-prompt", "disabled"), True, False),
-        (Output("g3-working", "display"), "block", "none"),
-    ],
     prevent_initial_call=True,
 )
-def sculpt(_, prompt):
-    result = sculptor.sculpt(prompt)
+def poll(_, run_id, prompt):
+    """Drain the seam and render whatever has arrived.
 
-    if not result.ok:
-        return no_update, no_update, result.reason, "yellow", False, no_update
+    Every `part` event carries a COMPLETE `.glb` of the parts so far, so the
+    viewer is re-pointed at each in turn and the sculpture assembles on screen.
+    `take()` clears as it reads, so this never redraws what it already drew.
 
-    manifest = result.manifest
-    note = f"{manifest.get('name', 'Untitled')} — {manifest.get('notes', '')}"
-    if result.notes:
-        note += "  ·  " + "; ".join(result.notes)
-    note += f"  ·  {result.part_count} parts, {len(result.glb) / 1024:.0f} KB"
+    The Interval stops the moment the run ends — on the `done` event, or on a
+    `done` flag with no event, which is how a failed build reports itself.
+    """
+    idle = (no_update,) * 11
+    if not run_id:
+        return idle
+
+    state = build_stream.take(run_id)
+
+    latest_src = no_update
+    progress = no_update
+    final = None
+    for event in state["events"]:
+        phase = event.get("phase")
+        if phase == "part":
+            latest_src = event["data_url"]
+            progress = f"Building — part {event['index']} of {event['total']}"
+        elif phase == "assembling":
+            progress = (
+                f"Composed in {event.get('seconds', 0)}s — "
+                f"assembling {event['total']} parts"
+            )
+        elif phase == "done":
+            final = event
+
+    if final is not None:
+        manifest = final.get("manifest") or {}
+        note = f"{manifest.get('name', 'Untitled')} — {manifest.get('notes', '')}"
+        if final.get("notes"):
+            note += "  ·  " + "; ".join(final["notes"])
+        note += (
+            f"  ·  {final.get('part_count', 0)} parts in "
+            f"{final.get('seconds', 0)}s"
+        )
+        return (
+            final.get("data_url") or latest_src,
+            f"A generated 3D sculpture: {manifest.get('name', prompt)}",
+            note, "indigo", False,
+            json.dumps(manifest, indent=2),
+            "", True, "none", False, False,
+        )
+
+    if state["done"]:
+        return (
+            no_update, no_update,
+            state["reason"] or "The sculpt did not complete.",
+            "yellow", False, no_update,
+            "", True, "none", False, False,
+        )
 
     return (
-        result.data_url,
-        f"A generated 3D sculpture: {manifest.get('name', prompt)}",
-        note,
-        "indigo",
-        False,
-        json.dumps(manifest, indent=2),
+        latest_src, no_update, no_update, no_update, no_update, no_update,
+        progress, no_update, no_update, no_update, no_update,
     )
