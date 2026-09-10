@@ -653,6 +653,26 @@ from lib.satellite_reporter import start_reporter
 
 start_reporter()
 
+# ============================================================================
+# OpenAI model discovery — ONE fetch, here, at boot.
+#
+# `GET /v1/models` on this host's own key decides which OpenAI models
+# /benchmark and /generative-3d offer, because a model id written into the
+# source and since retired is an outage the first time somebody clicks it.
+#
+# It is warmed HERE and nowhere else. A page module that fetched at import
+# would put a third-party network call on the boot path, where a slow response
+# takes every page down — the shape of the Pillow outage
+# tests/test_requirements.py exists for, and the shape of the IncompleteRead
+# this line was moved out of a page to fix. `warm()` never raises; with no key
+# it returns immediately without touching the network, and the pages fall back
+# to the Anthropic list with a sentence saying why.
+# ============================================================================
+
+from lib import openai_client
+
+openai_client.warm()
+
 # MCP wiring used to live down here, calling `from dash import mcp_enabled`
 # and `mcp_enabled(app)`. Both were wrong: the symbol lives in `dash.mcp`, not
 # `dash`, so the import always raised ImportError and the app printed

@@ -148,12 +148,12 @@ component = dmc.Stack(
                 label="Models to compare",
                 value=["claude-haiku-4-5", "claude-opus-5"],
                 children=dmc.Group([dmc.Checkbox(label=m["label"], value=m["value"])
-                                    for m in spend.MODELS], gap="md"),
+                                    for m in spend.model_options()], gap="md"),
             ),
             dmc.Grid(gutter="md", children=[
                 dmc.GridCol(dmc.Select(
                     id="bm-fixed-model", label="Fixed model",
-                    data=spend.MODELS, value="claude-opus-5",
+                    data=spend.model_options(), value="claude-opus-5",
                 ), span={"base": 12, "sm": 4}),
                 dmc.GridCol(dmc.Select(
                     id="bm-fixed-effort", label="Fixed effort",

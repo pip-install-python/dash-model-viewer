@@ -57,15 +57,55 @@ PRICING = {
     "claude-haiku-4-5": (1.00, 5.00),
 }
 
+# The OpenAI models are metered by the same gate. Their prices live in
+# lib/openai_client.py beside the discovery that decides which of them are
+# offered at all, and are merged in here so `cost_usd` and `estimate_usd` need
+# to know nothing about providers.
+#
+# THIS MERGE IS LOAD-BEARING. `PRICING.get(model, (0.0, 0.0))` prices an
+# unknown model at ZERO, so a model that reached the Select without reaching
+# this table would be counted as free and would slip past the budget gate
+# entirely — the guard would not fail, it would silently pass. That is why
+# openai_client.offered_models() refuses to offer a model it cannot price, and
+# why tests/test_openai_client.py asserts the two sets are equal rather than
+# merely overlapping.
+from lib.openai_client import PRICING as _OPENAI_PRICING  # noqa: E402
+
+
+PRICING.update(_OPENAI_PRICING)
+
+
 MODELS = [
     {"value": "claude-opus-5", "label": "Claude Opus 5 · $5 / $25"},
     {"value": "claude-sonnet-5", "label": "Claude Sonnet 5 · $3 / $15"},
     {"value": "claude-haiku-4-5", "label": "Claude Haiku 4.5 · $1 / $5"},
 ]
 
+
+def model_options():
+    """Every model a page may offer, both providers, priced and reachable.
+
+    The Anthropic entries are static because the key either works or does not.
+    The OpenAI entries are DISCOVERED from `GET /v1/models` on this host's own
+    key and cached for the process — a model id written down here and since
+    retired is an outage the first time somebody clicks it.
+
+    With no OpenAI key this returns exactly the Anthropic list and makes no
+    network call, so the existing pages behave as they always have.
+    """
+    from lib import openai_client
+
+    return list(MODELS) + openai_client.offered_models()
+
+
 #: Models that accept `output_config.effort`. Varying effort on a model that
 #: rejects it would run N identical calls and present them as a comparison,
 #: which is worse than an error because the output looks like a result.
+#:
+#: The OpenAI models are absent deliberately: their reasoning effort is set a
+#: different way, so listing them here would send a parameter their API
+#: rejects — and /benchmark sweeping a parameter a model ignores would present
+#: N identical runs as a comparison, which is the defect this set exists for.
 EFFORT_CAPABLE = frozenset({"claude-opus-5", "claude-sonnet-5"})
 
 EFFORTS = ["low", "medium", "high", "xhigh"]

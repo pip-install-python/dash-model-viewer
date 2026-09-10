@@ -34,7 +34,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from lib import glb, spend
+from lib import glb, openai_client, spend
 
 MODEL = "claude-opus-5"
 MAX_TOKENS = 4000
@@ -77,7 +77,25 @@ class SculptResult:
 
 
 def available() -> bool:
+    """Anthropic. Kept as-is: /generative-3d and /benchmark both call it."""
     return bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+
+
+def provider_of(model: str) -> str:
+    """Which API a model id belongs to.
+
+    Decided by the PRICING tables rather than by prefix-matching the id, so a
+    model this build cannot meter is never routed anywhere — it falls through
+    to a plain "unknown model" instead of being sent to a provider on the
+    strength of its name.
+    """
+    if model in openai_client.PRICING:
+        return "openai"
+    return "anthropic"
+
+
+def available_for(model: str) -> bool:
+    return openai_client.available() if provider_of(model) == "openai" else available()
 
 
 # --------------------------------------------------------------------------
@@ -332,6 +350,9 @@ def sculpt(
         verdict = spend.check(1, spend.estimate_usd(model, max_tokens))
         if not verdict.allowed:
             return SculptResult(ok=False, reason=verdict.reason, **meta)
+    if provider_of(model) == "openai":
+        return _sculpt_openai(prompt_for(request, style), model, max_tokens, meta)
+
     if not available():
         return SculptResult(
             ok=False,
@@ -348,7 +369,7 @@ def sculpt(
     except ImportError:
         return SculptResult(ok=False, reason="The `anthropic` package is not installed.", **meta)
 
-    prompt = request if not style else f"{request}\n\nStyle: {style}"
+    prompt = prompt_for(request, style)
     output_config: Dict[str, Any] = {
         "format": {"type": "json_schema", "schema": _schema()}
     }
@@ -396,6 +417,74 @@ def sculpt(
         return SculptResult(
             ok=False, reason="The model did not return usable JSON." + hint, **measured)
 
+    return _finish(scene, measured)
+
+
+def prompt_for(request: str, style: Optional[str]) -> str:
+    return request if not style else f"{request}\n\nStyle: {style}"
+
+
+def _sculpt_openai(
+    prompt: str, model: str, max_tokens: int, meta: Dict[str, Any]
+) -> SculptResult:
+    """The OpenAI path. Same schema, same clamps, same GLB writer.
+
+    Kept to the same shape as the Anthropic path on purpose: a failure returns
+    a SculptResult with a reason rather than raising, because /benchmark sweeps
+    settings and one bad combination must not take the sweep down.
+    """
+    if not openai_client.available():
+        return SculptResult(ok=False, reason=openai_client.status(), **meta)
+
+    started = time.perf_counter()
+    try:
+        scene, usage, stop_reason = openai_client.complete_json(
+            model=model,
+            system=SYSTEM,
+            prompt=prompt,
+            schema=_schema(),
+            max_tokens=max_tokens,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return SculptResult(ok=False, reason=f"{type(exc).__name__}: {exc}", **meta)
+    elapsed = time.perf_counter() - started
+
+    in_tok = usage.get("input_tokens", 0)
+    out_tok = usage.get("output_tokens", 0)
+    measured = dict(
+        seconds=elapsed,
+        input_tokens=in_tok,
+        output_tokens=out_tok,
+        # Recorded against the SAME gate as the Anthropic path — one budget for
+        # the host, not one per provider.
+        usd=spend.record(model, in_tok, out_tok),
+        stop_reason=stop_reason,
+        **meta,
+    )
+
+    if stop_reason == "length":
+        return SculptResult(
+            ok=False,
+            reason=(
+                "The output hit max_completion_tokens, so the JSON was cut off "
+                "— that is the budget, not the model."
+            ),
+            **measured,
+        )
+    if not isinstance(scene, dict) or "parts" not in scene:
+        return SculptResult(
+            ok=False, reason="The model did not return usable JSON.", **measured
+        )
+    return _finish(scene, measured)
+
+
+def _finish(scene: Dict[str, Any], measured: Dict[str, Any]) -> SculptResult:
+    """Scene dict -> GLB, shared by every provider.
+
+    Deliberately after the provider branch: the clamping, the part budget and
+    the geometry are the same work whoever produced the parts list, and a
+    second copy of it would be a second place for the ceilings to drift.
+    """
     try:
         data, notes, used = build(scene)
     except ValueError as exc:
