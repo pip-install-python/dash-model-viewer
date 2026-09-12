@@ -26,7 +26,16 @@ PAGES = {
 
 
 @pytest.fixture(autouse=True)
-def _no_key(monkeypatch):
+def _anthropic_only(monkeypatch):
+    """No OpenAI key, but an Anthropic one.
+
+    These tests are about what the picker does when it HAS something to offer.
+    Since the owner's 2026-09-12 decision, `model_options()` gates the Claude
+    entries on the Anthropic key too, so without this the whole file would be
+    asserting against the empty keyless case — which is
+    `tests/test_keyless_host.py`'s job, not this one's.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     for var in openai_client.KEY_VARS:
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(openai_client, "_discovered", None)
@@ -170,11 +179,17 @@ def test_no_provider_key_escapes_the_conftest_blanking():
     assert "ANTHROPIC_API_KEY" in SECRET_ENV_KEYS
 
 
-def test_the_suite_really_has_no_provider_key():
+def test_the_suite_really_has_no_provider_key(monkeypatch):
     """Belt to the braces above: assert the ACTUAL environment, so a change to
-    how conftest applies the list is caught too."""
+    how conftest applies the list is caught too.
+
+    Opts out of this file's fixture — it is asserting what conftest did, not
+    what a test arranged.
+    """
     import os
 
-    for var in (*openai_client.KEY_VARS, "ANTHROPIC_API_KEY"):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(os, "environ", {**os.environ})
+    for var in (*openai_client.KEY_VARS,):
         assert not os.environ.get(var), f"{var} is set during the test run"
     assert openai_client.available() is False

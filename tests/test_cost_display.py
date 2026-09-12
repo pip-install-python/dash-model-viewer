@@ -18,6 +18,20 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 SPENDING_PAGES = ("g3", "si")
 
 
+@pytest.fixture(autouse=True)
+def _with_a_key(monkeypatch):
+    """These tests are about the PRICED path, so they must arrange a key.
+
+    conftest blanks every provider key for the suite, which is right — the
+    deployed host has none (owner's decision, 2026-09-12) and
+    `tests/test_keyless_host.py` covers that state. Without this fixture these
+    tests silently asserted against the no-keys message instead, which is how
+    they started failing the moment the keyless behaviour landed.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    yield
+
+
 def _page(prefix):
     return importlib.import_module({
         "g3": "docs.generative-3d.sculptor",

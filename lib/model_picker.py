@@ -53,15 +53,27 @@ def components(prefix: str, default: str, label: str = "Model", **select_kwargs)
     ]
 
 
-def register(prefix: str) -> None:
-    """Wire the fill callback for `prefix`. Call once, at page import."""
+def register(prefix: str, action_ids: Optional[List[str]] = None) -> None:
+    """Wire the fill callback for `prefix`. Call once, at page import.
+
+    `action_ids` are the controls that SPEND — the buttons that start a model
+    call. They are disabled when this host has no provider key, because an
+    enabled button that always fails is the thing a visitor reports as a bug.
+    Disabling rather than hiding is deliberate: the control staying visible
+    beside the explanation is what makes the page read as deliberately off
+    instead of half-built.
+    """
+    action_ids = action_ids or []
 
     @callback(
         Output(f"{prefix}-model", "data"),
         Output(f"{prefix}-model", "value"),
         Output(f"{prefix}-model-status", "children"),
+        Output(f"{prefix}-model", "disabled"),
+        *[Output(i, "disabled", allow_duplicate=True) for i in action_ids],
         Input(f"{prefix}-model-init", "n_intervals"),
         State(f"{prefix}-model", "value"),
+        prevent_initial_call=True,
     )
     def _fill(_n, current):
         options = spend.model_options()
@@ -72,17 +84,29 @@ def register(prefix: str) -> None:
         chosen: Optional[str] = current if current in values else (
             values[0] if values else None
         )
-        return options, chosen, status_line()
+        off = not spend.any_provider_available()
+        return (options, chosen, status_line(), off, *[off] * len(action_ids))
 
 
 def status_line() -> str:
-    """One sentence about the OpenAI half, always true.
+    """One sentence about what is on offer, always true.
 
-    The Anthropic models are listed unconditionally because their key either
-    works or the sculpt reports that it does not. The OpenAI models are only
-    listed when a key reached `/v1/models`, so their ABSENCE needs explaining
-    — otherwise a missing model reads as a broken page.
+    The no-keys case comes FIRST and it is not an error state: the owner's
+    decision of 2026-09-12 is that no Render service carries a provider key,
+    because the sites are documentation and there is to be no production
+    spend. So an empty picker is the expected production state, and the line
+    beside it has to say that plainly enough that nobody files it as a bug.
+
+    This used to open with "Claude models only — CHATGPT_API_KEY is not set",
+    which was actively misleading on a host with NEITHER key: it named the
+    missing one and implied the other worked.
     """
+    if not spend.any_provider_available():
+        return spend.NO_KEYS_MESSAGE
+    if not spend.anthropic_available():
+        return (
+            "GPT models only — ANTHROPIC_API_KEY is not set on this host."
+        )
     if not openai_client.available():
         return (
             "Claude models only — CHATGPT_API_KEY is not set on this host. "

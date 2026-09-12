@@ -216,7 +216,11 @@ def test_offered_models_never_touches_the_network(monkeypatch):
 
 
 def test_model_options_makes_no_call_and_still_lists_anthropic(monkeypatch):
+    """The Anthropic key is set explicitly: since the owner's 2026-09-12
+    decision, `model_options()` gates those entries on it too, so a host with
+    only a CHATGPT key correctly lists no Claude models."""
     monkeypatch.setenv("CHATGPT_API_KEY", "k")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     with mock.patch("urllib.request.urlopen") as opener:
         values = [m["value"] for m in spend.model_options()]
         opener.assert_not_called()

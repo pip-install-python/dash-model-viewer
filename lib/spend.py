@@ -82,20 +82,52 @@ MODELS = [
 ]
 
 
-def model_options():
-    """Every model a page may offer, both providers, priced and reachable.
+#: The phrase every generative page uses when this host cannot spend. One
+#: string, so the pages, the docs and the tests cannot drift into three
+#: different explanations of the same state.
+NO_KEYS_MESSAGE = (
+    "This site runs without provider keys — the AI demos are off here. "
+    "Clone the repo and run it locally with a .env to try them."
+)
 
-    The Anthropic entries are static because the key either works or does not.
-    The OpenAI entries are DISCOVERED from `GET /v1/models` on this host's own
-    key and cached for the process — a model id written down here and since
-    retired is an outage the first time somebody clicks it.
 
-    With no OpenAI key this returns exactly the Anthropic list and makes no
-    network call, so the existing pages behave as they always have.
+def anthropic_available() -> bool:
+    return bool(os.environ.get("ANTHROPIC_API_KEY", "").strip())
+
+
+def any_provider_available() -> bool:
+    """Can this host spend at all?
+
+    The owner's decision of 2026-09-12: no provider keys on any Render
+    service, because the sites are documentation and there is to be no
+    production spend. So "no keys" is the NORMAL state in production, not a
+    misconfiguration — every generative page has to read as deliberately off
+    rather than as broken.
     """
     from lib import openai_client
 
-    return list(MODELS) + openai_client.offered_models()
+    return anthropic_available() or openai_client.available()
+
+
+def model_options():
+    """Every model this host can actually USE, both providers.
+
+    Gated on the keys, which is the part that took a correction. The Anthropic
+    entries used to be listed unconditionally, so a keyless host offered three
+    Claude models that could not run — a dropdown full of options that all
+    fail is worse than an empty one with a reason beside it.
+
+    The OpenAI entries are DISCOVERED from `GET /v1/models` on this host's own
+    key and cached; a model id written down here and since retired would be an
+    outage the first time somebody selected it.
+
+    With no keys at all this is EMPTY, and `model_picker.status_line()` says
+    why. It makes no network call in that state.
+    """
+    from lib import openai_client
+
+    anthropic = list(MODELS) if anthropic_available() else []
+    return anthropic + openai_client.offered_models()
 
 
 #: Models that accept `output_config.effort`. Varying effort on a model that
@@ -149,6 +181,10 @@ def estimate_line(model: str, max_tokens: int, calls: int = 1) -> str:
     is an upper bound rather than a guess, and the actual figure reported after
     the run is nearly always lower.
     """
+    if not any_provider_available():
+        # Quoting a price on a host that cannot spend is worse than quoting
+        # nothing: it implies the button works.
+        return NO_KEYS_MESSAGE
     estimate = estimate_usd(model, max_tokens, calls)
     left = remaining()
     unpriced = "" if PRICING.get(model) else " — this model has no price table entry"

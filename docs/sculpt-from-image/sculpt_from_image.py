@@ -230,4 +230,4 @@ def show_estimate(model):
     return spend.estimate_line(model or sculptor.MODEL, sculptor.MAX_TOKENS)
 
 
-model_picker.register("si")
+model_picker.register("si", action_ids=["si-go"])

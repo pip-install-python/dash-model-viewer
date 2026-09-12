@@ -311,6 +311,7 @@ def _run(_clicks, axis, efforts, budgets, models, f_model, f_effort, f_budget, p
     Output("bm-model-boxes", "children"),
     Output("bm-fixed-model", "data"),
     Output("bm-model-status", "children"),
+    Output("bm-run", "disabled"),
     Input("bm-model-init", "n_intervals"),
 )
 def _fill_models(_n):
@@ -322,4 +323,6 @@ def _fill_models(_n):
     """
     options = spend.model_options()
     boxes = [dmc.Checkbox(label=m["label"], value=m["value"]) for m in options]
-    return boxes, options, model_picker.status_line()
+    # Disabled with no provider key. This page spends up to four times per
+    # click, so an enabled button on a keyless host is the worst of the three.
+    return boxes, options, model_picker.status_line(), not spend.any_provider_available()

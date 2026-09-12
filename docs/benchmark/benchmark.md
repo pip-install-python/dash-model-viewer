@@ -6,7 +6,7 @@ category: Reference
 order: 3
 package: dash_model_viewer
 icon: mdi:chart-box-outline
-lastmod: 2026-09-10
+lastmod: 2026-09-12
 ---
 
 .. llms_copy::Benchmark
@@ -174,3 +174,33 @@ Two honest limitations:
 .. source::docs/benchmark/benchmark.py
     :defaultExpanded: false
     :withExpandedButton: true
+
+---
+
+### This site runs without provider keys
+
+The AI demos on this page are **off on modelviewer.2plot.dev**, deliberately.
+This is a documentation site; it carries no provider keys and does no
+production spend (owner's decision, 2026-09-12).
+
+So on the public site you will see the model picker empty, the generate
+control disabled, and a line saying so. **That is the expected state, not a
+fault** — please do not file it.
+
+To try it, run the site locally with your own keys:
+
+```bash
+git clone https://github.com/pip-install-python/dash-model-viewer
+cd dash-model-viewer
+printf 'ANTHROPIC_API_KEY=sk-ant-...\nCHATGPT_API_KEY=sk-...\n' > .env
+pip install -r requirements.txt && python run.py
+```
+
+Either key alone is enough — the picker offers whichever provider it finds.
+`lib/spend.py`'s ceiling then applies locally: a rolling call limit and a
+cumulative dollar estimate, so an accident costs a few cents rather than a
+weekend.
+
+Everything on this page that does **not** need a key still works and is worth
+reading for it: the JSON schema, the clamps, the sRGB-to-linear conversion and
+the dependency-free glTF writer in `lib/glb.py` are all plain Python.

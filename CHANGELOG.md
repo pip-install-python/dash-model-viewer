@@ -116,6 +116,15 @@ at the end of this entry.
 - `DashModelViewer`. The module is now `_components.py`; the old filename is
   retired so a stale copy cannot shadow the new one.
 
+- **Provider keys from the deployed site.** The documentation host carries no
+  `ANTHROPIC_API_KEY` and no `CHATGPT_API_KEY` (owner's decision,
+  2026-09-12): the sites are documentation and do no production spend. The
+  generative pages therefore ship an empty model picker, a disabled generate
+  control and a line explaining why, on every deployment. That is the expected
+  production state rather than a misconfiguration, and it is said on the pages
+  so nobody files it as a bug. Run the site locally with a `.env` to use them;
+  `lib/spend.py`'s rolling call limit and dollar ceiling then apply there.
+
 - **`camera["source"]`.** The shim reports camera movement only for user
   interaction — that is the echo suppression above — so the key could only ever
   hold the single string `"user-interaction"`. A field with one possible value

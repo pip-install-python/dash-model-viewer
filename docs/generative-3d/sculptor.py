@@ -250,7 +250,7 @@ def poll(_, run_id, prompt):
     )
 
 
-model_picker.register("g3")
+model_picker.register("g3", action_ids=["g3-go"])
 
 
 @callback(
