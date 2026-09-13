@@ -288,7 +288,7 @@ def test_the_interval_keeps_running_mid_build():
         "phase": "part", "index": 2, "total": 5,
         "data_url": "data:model/gltf-binary;base64,AAA",
     })
-    out = page.poll(1, run, "x")
+    out = page.poll(1, run, "x", "claude-opus-5")
     assert out[0] == "data:model/gltf-binary;base64,AAA", "viewer follows the parts"
     assert "part 2 of 5" in out[6]
     assert out[7] is not True, "the Interval must keep polling while building"
@@ -305,7 +305,7 @@ def test_the_interval_STOPS_when_the_run_finishes():
         "part_count": 1, "seconds": 3.2, "usd": 0.01,
     })
     build_stream.finish(run, ok=True)
-    out = page.poll(9, run, "x")
+    out = page.poll(9, run, "x", "claude-opus-5")
     assert out[7] is True, "the Interval must stop on done"
     assert out[0] == "data:model/gltf-binary;base64,ZZZ"
     assert "Tower" in out[2]
@@ -316,7 +316,7 @@ def test_the_interval_stops_on_a_failed_run():
     page = _page()
     run = build_stream.new_run()
     build_stream.finish(run, ok=False, reason="ANTHROPIC_API_KEY is not set")
-    out = page.poll(3, run, "x")
+    out = page.poll(3, run, "x", "claude-opus-5")
     assert out[7] is True, "a failed run must stop the timer too"
     assert "ANTHROPIC_API_KEY" in out[2]
     assert out[3] == "yellow"
@@ -333,11 +333,18 @@ def test_a_run_belongs_to_the_tab_that_started_it():
         "phase": "part", "index": 1, "total": 2,
         "data_url": "data:model/gltf-binary;base64,THEIRS",
     })
-    out = page.poll(1, mine, "x")
+    out = page.poll(1, mine, "x", "claude-opus-5")
     assert out[0] != "data:model/gltf-binary;base64,THEIRS"
     assert len(mine) == 32 and mine != theirs, "ids are distinct uuids"
 
 
 def test_poll_without_a_run_id_does_nothing():
+    """Asserted as "every output is no_update", not as a literal width — the
+    tuple grew from 11 to 14 when the manifest store and its two buttons were
+    added, and a hardcoded count makes that a test failure rather than a
+    widening."""
+    from dash import no_update
+
     page = _page()
-    assert len(page.poll(1, None, "x")) == 11
+    out = page.poll(1, None, "x", "claude-opus-5")
+    assert out and all(v is no_update for v in out)

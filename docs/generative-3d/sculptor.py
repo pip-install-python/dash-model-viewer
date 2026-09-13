@@ -1,11 +1,12 @@
 import json
 import threading
+from datetime import date
 
 from dash import ALL, Input, Output, State, callback, ctx, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import build_stream, model_picker, sculptor, spend
+from lib import build_stream, manifest, model_picker, sculptor, spend
 
 IDEAS = [
     "a brutalist lighthouse at dusk, weathered concrete and one warm light",
@@ -34,6 +35,9 @@ component = html.Div(
         # tab that started it — two tabs sculpting at once do not read each
         # other's parts.
         dcc.Store(id="g3-run"),
+        dcc.Store(id="g3-manifest"),
+        dcc.Download(id="g3-dl-json"),
+        dcc.Download(id="g3-dl-glb"),
         dcc.Interval(id="g3-poll", interval=700, disabled=True),
         dmc.Group(
             model_picker.components("g3", sculptor.MODEL, w=260),
@@ -121,6 +125,15 @@ component = html.Div(
             children=dmc.Code(id="g3-json", block=True),
             mt="xs",
         ),
+        dmc.Group(
+            [
+                dmc.Button("Save the manifest", id="g3-save-json",
+                           variant="light", size="xs", disabled=True),
+                dmc.Button("Download .glb", id="g3-save-glb",
+                           variant="light", size="xs", disabled=True),
+            ],
+            gap="xs", mt="xs",
+        ),
     ]
 )
 
@@ -182,12 +195,16 @@ def start_sculpt(_, prompt, model):
     Output("g3-working", "display", allow_duplicate=True),
     Output("g3-go", "loading", allow_duplicate=True),
     Output("g3-prompt", "disabled", allow_duplicate=True),
+    Output("g3-manifest", "data"),
+    Output("g3-save-json", "disabled"),
+    Output("g3-save-glb", "disabled"),
     Input("g3-poll", "n_intervals"),
     State("g3-run", "data"),
+    State("g3-model", "value"),
     State("g3-prompt", "value"),
     prevent_initial_call=True,
 )
-def poll(_, run_id, prompt):
+def poll(_, run_id, prompt, model):
     """Drain the seam and render whatever has arrived.
 
     Every `part` event carries a COMPLETE `.glb` of the parts so far, so the
@@ -197,7 +214,7 @@ def poll(_, run_id, prompt):
     The Interval stops the moment the run ends — on the `done` event, or on a
     `done` flag with no event, which is how a failed build reports itself.
     """
-    idle = (no_update,) * 11
+    idle = (no_update,) * 14
     if not run_id:
         return idle
 
@@ -220,8 +237,10 @@ def poll(_, run_id, prompt):
             final = event
 
     if final is not None:
-        manifest = final.get("manifest") or {}
-        note = f"{manifest.get('name', 'Untitled')} — {manifest.get('notes', '')}"
+        # NOT named `manifest` — that is the module, imported above, and
+        # shadowing it here would turn `manifest.from_scene` into a dict lookup.
+        scene = final.get("manifest") or {}
+        note = f"{scene.get('name', 'Untitled')} — {scene.get('notes', '')}"
         if final.get("notes"):
             note += "  ·  " + "; ".join(final["notes"])
         note += (
@@ -230,10 +249,15 @@ def poll(_, run_id, prompt):
         )
         return (
             final.get("data_url") or latest_src,
-            f"A generated 3D sculpture: {manifest.get('name', prompt)}",
+            f"A generated 3D sculpture: {scene.get('name', prompt)}",
             note, "indigo", False,
-            json.dumps(manifest, indent=2),
+            json.dumps(scene, indent=2),
             "", True, "none", False, False,
+            manifest.from_scene(scene, {
+                "prompt": prompt, "model": model,
+                "usd": final.get("usd", 0.0),
+                "generated": date.today().isoformat(),
+            }), False, False,
         )
 
     if state["done"]:
@@ -242,11 +266,13 @@ def poll(_, run_id, prompt):
             state["reason"] or "The sculpt did not complete.",
             "yellow", False, no_update,
             "", True, "none", False, False,
+            no_update, no_update, no_update,
         )
 
     return (
         latest_src, no_update, no_update, no_update, no_update, no_update,
         progress, no_update, no_update, no_update, no_update,
+        no_update, no_update, no_update,
     )
 
 
@@ -264,3 +290,53 @@ def show_estimate(model):
     moment that fact is useful is before the click.
     """
     return spend.estimate_line(model or sculptor.MODEL, sculptor.MAX_TOKENS)
+
+
+@callback(
+    Output("g3-dl-json", "data"),
+    Input("g3-save-json", "n_clicks"),
+    State("g3-manifest", "data"),
+    prevent_initial_call=True,
+)
+def save_manifest(_clicks, stored):
+    """The manifest is the valuable half.
+
+    Re-importing it on [Scene Manifest](/scene-manifest) re-renders the same
+    sculpture for free, and editing it costs nothing — which is the whole point
+    of keeping it rather than only the `.glb`.
+    """
+    if not stored:
+        return no_update
+    try:
+        m = manifest.validate(stored)
+    except manifest.ManifestError:
+        return no_update
+    return {"content": manifest.dumps(m),
+             "filename": manifest.filename(m, "json")}
+
+
+@callback(
+    Output("g3-dl-glb", "data"),
+    Input("g3-save-glb", "n_clicks"),
+    State("g3-manifest", "data"),
+    prevent_initial_call=True,
+)
+def save_glb(_clicks, stored):
+    """Rebuilt from the stored manifest on demand, not carried as bytes.
+
+    `lib/glb.py` is deterministic, so this is the same file the viewer is
+    showing — and it keeps a megabyte of binary out of the browser's store.
+    Nothing is written to disk at any point.
+
+    Two callbacks rather than one dispatching on `ctx.triggered_id`: a callback
+    that reads the context cannot be called from a test, and these two are
+    worth testing.
+    """
+    if not stored:
+        return no_update
+    try:
+        m = manifest.validate(stored)
+        data, _notes, _used = manifest.render(m)
+    except manifest.ManifestError:
+        return no_update
+    return dcc.send_bytes(data, manifest.filename(m, "glb"))

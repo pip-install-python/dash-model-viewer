@@ -106,7 +106,10 @@ def _finished_run(usd=0.0871, seconds=34.2):
 def test_the_page_reports_what_the_run_ACTUALLY_cost(prefix):
     page = _page(prefix)
     run = _finished_run()
-    note = page.poll(1, run, "x")[2] if prefix == "g3" else page.poll(1, run)[2]
+    # g3 takes (prompt, model); si takes (model, hint).
+    out = (page.poll(1, run, "x", "claude-opus-5") if prefix == "g3"
+           else page.poll(1, run, "claude-opus-5", "x"))
+    note = out[2]
     assert "$0.0871" in note, f"the actual cost is missing from: {note}"
     assert "34s" in note
 

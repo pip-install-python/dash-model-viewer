@@ -104,6 +104,19 @@ at the end of this entry.
   deliberately out of scope, needing a separate ES-module addon that the
   classic-script rule in `.claude/ARCHITECTURE.md` forbids.
 
+- **A scene manifest you can export, edit and re-render.** The JSON a
+  generated sculpture is made of is now a documented, versioned format
+  (`/scene-manifest`) with an importer, a byte-stable exporter and a `.glb`
+  download on both generating pages. `lib/glb.py` is deterministic, so a
+  manifest re-renders byte-identically — which makes the file a way back to the
+  object rather than a souvenir, and means editing a sculpture costs nothing
+  where asking a model to change it costs a call. `provenance` records the
+  prompt, model, cost and date and is never read by the renderer. Nothing is
+  written to disk: imports are validated in memory and refused with the field's
+  path named, and downloads are bytes handed straight to the response. The
+  round trip works on a host with **no API key at all** — three committed
+  sample manifests demonstrate it, one of them at exactly the 28-part limit.
+
 - **A picking example.** `pick_on_click` and `scene_point` were documented from
   the start and demonstrated nowhere, so nothing would have noticed if the
   shim's click path broke. `/events-and-callbacks` now runs one.

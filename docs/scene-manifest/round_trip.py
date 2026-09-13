@@ -29,6 +29,7 @@ _INITIAL_GLB, _, _ = manifest.render(manifest.loads(_FIRST))
 component = html.Div(
     [
         dcc.Download(id="sm-download-json"),
+        dcc.Download(id="sm-download-glb"),
         dmc.Grid(
             gutter="md",
             children=[
@@ -56,6 +57,8 @@ component = html.Div(
                                 [
                                     dmc.Button("Render", id="sm-render"),
                                     dmc.Button("Export JSON", id="sm-export",
+                                               variant="light"),
+                                    dmc.Button("Download .glb", id="sm-glb",
                                                variant="light"),
                                     dmc.Button("Load the invalid fixture",
                                                id="sm-break", variant="subtle",
@@ -160,3 +163,24 @@ def export_json(_clicks, text):
         "content": manifest.dumps(parsed),
         "filename": manifest.filename(parsed, "json"),
     }
+
+
+@callback(
+    Output("sm-download-glb", "data"),
+    Input("sm-glb", "n_clicks"),
+    State("sm-text", "value"),
+    prevent_initial_call=True,
+)
+def download_glb(_clicks, text):
+    """Hand over the rendered bytes.
+
+    Built in memory and written straight into the response buffer: there is no
+    server-side path, no store, no temp file and nothing to clean up. That is
+    the same reasoning that keeps the viewer's own `src` a `data:` URL.
+    """
+    try:
+        parsed = manifest.loads(text or "")
+        data, _notes, _used = manifest.render(parsed)
+    except manifest.ManifestError:
+        return no_update
+    return dcc.send_bytes(data, manifest.filename(parsed, "glb"))

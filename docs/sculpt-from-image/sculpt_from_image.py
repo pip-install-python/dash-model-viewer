@@ -1,11 +1,12 @@
 import json
 import threading
+from datetime import date
 
 from dash import Input, Output, State, callback, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import build_stream, model_picker, sculptor, spend, uploads
+from lib import build_stream, manifest, model_picker, sculptor, spend, uploads
 
 #: 4 MB, the same cap /texture-upload states, from the same module. A vision
 #: model resizes anything larger anyway, so a bigger allowance would buy a
@@ -22,6 +23,9 @@ component = html.Div(
     [
         dcc.Store(id="si-image"),
         dcc.Store(id="si-run"),
+        dcc.Store(id="si-manifest"),
+        dcc.Download(id="si-dl-json"),
+        dcc.Download(id="si-dl-glb"),
         dcc.Interval(id="si-poll", interval=700, disabled=True),
         dmc.Group(
             model_picker.components("si", sculptor.MODEL, w=260),
@@ -103,6 +107,15 @@ component = html.Div(
             children=dmc.Code(id="si-json", block=True),
             mt="xs",
         ),
+        dmc.Group(
+            [
+                dmc.Button("Save the manifest", id="si-save-json",
+                           variant="light", size="xs", disabled=True),
+                dmc.Button("Download .glb", id="si-save-glb",
+                           variant="light", size="xs", disabled=True),
+            ],
+            gap="xs", mt="xs",
+        ),
     ]
 )
 
@@ -162,13 +175,18 @@ def start(_, image, hint, model):
     Output("si-poll", "disabled", allow_duplicate=True),
     Output("si-working", "display", allow_duplicate=True),
     Output("si-go", "loading", allow_duplicate=True),
+    Output("si-manifest", "data"),
+    Output("si-save-json", "disabled"),
+    Output("si-save-glb", "disabled"),
     Input("si-poll", "n_intervals"),
     State("si-run", "data"),
+    State("si-model", "value"),
+    State("si-hint", "value"),
     prevent_initial_call=True,
 )
-def poll(_, run_id):
+def poll(_, run_id, model, hint):
     """Same seam, same collector as /generative-3d — see lib/build_stream.py."""
-    idle = (no_update,) * 10
+    idle = (no_update,) * 13
     if not run_id:
         return idle
 
@@ -190,8 +208,9 @@ def poll(_, run_id):
             final = event
 
     if final is not None:
-        manifest = final.get("manifest") or {}
-        note = f"{manifest.get('name', 'Untitled')} — {manifest.get('notes', '')}"
+        # NOT named `manifest` — see the note in /generative-3d's poll.
+        scene = final.get("manifest") or {}
+        note = f"{scene.get('name', 'Untitled')} — {scene.get('notes', '')}"
         if final.get("notes"):
             note += "  ·  " + "; ".join(final["notes"])
         note += (
@@ -200,10 +219,16 @@ def poll(_, run_id):
         )
         return (
             final.get("data_url") or latest_src,
-            f"A sculpture evoking the uploaded image: {manifest.get('name', 'untitled')}",
+            f"A sculpture evoking the uploaded image: {scene.get('name', 'untitled')}",
             note, "indigo", False,
-            json.dumps(manifest, indent=2),
+            json.dumps(scene, indent=2),
             "", True, "none", False,
+            manifest.from_scene(scene, {
+                "prompt": hint or "(no hint — the image alone)",
+                "model": model,
+                "usd": final.get("usd", 0.0),
+                "generated": date.today().isoformat(),
+            }), False, False,
         )
 
     if state["done"]:
@@ -212,11 +237,13 @@ def poll(_, run_id):
             state["reason"] or "The sculpt did not complete.",
             "yellow", False, no_update,
             "", True, "none", False,
+            no_update, no_update, no_update,
         )
 
     return (
         latest_src, no_update, no_update, no_update, no_update, no_update,
         progress, no_update, no_update, no_update,
+        no_update, no_update, no_update,
     )
 
 
@@ -231,3 +258,53 @@ def show_estimate(model):
 
 
 model_picker.register("si", action_ids=["si-go"])
+
+
+@callback(
+    Output("si-dl-json", "data"),
+    Input("si-save-json", "n_clicks"),
+    State("si-manifest", "data"),
+    prevent_initial_call=True,
+)
+def save_manifest(_clicks, stored):
+    """The manifest is the valuable half.
+
+    Re-importing it on [Scene Manifest](/scene-manifest) re-renders the same
+    sculpture for free, and editing it costs nothing — which is the whole point
+    of keeping it rather than only the `.glb`.
+    """
+    if not stored:
+        return no_update
+    try:
+        m = manifest.validate(stored)
+    except manifest.ManifestError:
+        return no_update
+    return {"content": manifest.dumps(m),
+             "filename": manifest.filename(m, "json")}
+
+
+@callback(
+    Output("si-dl-glb", "data"),
+    Input("si-save-glb", "n_clicks"),
+    State("si-manifest", "data"),
+    prevent_initial_call=True,
+)
+def save_glb(_clicks, stored):
+    """Rebuilt from the stored manifest on demand, not carried as bytes.
+
+    `lib/glb.py` is deterministic, so this is the same file the viewer is
+    showing — and it keeps a megabyte of binary out of the browser's store.
+    Nothing is written to disk at any point.
+
+    Two callbacks rather than one dispatching on `ctx.triggered_id`: a callback
+    that reads the context cannot be called from a test, and these two are
+    worth testing.
+    """
+    if not stored:
+        return no_update
+    try:
+        m = manifest.validate(stored)
+        data, _notes, _used = manifest.render(m)
+    except manifest.ManifestError:
+        return no_update
+    return dcc.send_bytes(data, manifest.filename(m, "glb"))

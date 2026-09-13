@@ -291,6 +291,31 @@ protecting you from a file that renders nothing and does not say why.
 
 ---
 
+### Keeping what you made
+
+Both generating pages — [Generative 3D](/generative-3d) and
+[Sculpt from an Image](/sculpt-from-image) — offer two downloads once a build
+finishes:
+
+| Download | Why |
+| :-- | :-- |
+| **the manifest** | The valuable half. Re-import it here and the same sculpture renders for free; edit it first and it costs nothing either. It carries the prompt, model, cost and date in `provenance`. |
+| **the `.glb`** | The object itself, for a game engine, a 3D print, or anywhere that reads glTF. |
+
+The `.glb` is **rebuilt from the stored manifest on demand** rather than carried
+around as bytes. `lib/glb.py` is deterministic, so it is the same file the
+viewer is showing — and it keeps a megabyte of binary out of the browser.
+
+Neither download touches the disk. The bytes are built in memory and handed to
+the response: no server-side path, no store, no temp file and nothing to clean
+up, which is the same reasoning that keeps the viewer's `src` a `data:` URL.
+
+The filename is **derived** from `name` — slugged, capped and given a fixed
+extension — so a model that names a sculpture `../../etc/passwd` produces
+`etc-passwd.glb`.
+
+---
+
 ### Where these samples came from
 
 Three samples and one deliberately broken fixture, all committed as JSON in
