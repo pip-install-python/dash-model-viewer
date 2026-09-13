@@ -37,18 +37,30 @@ you can read what each control actually sent.
 
 ---
 
-### The viewer remounts on every change, deliberately
+### Reload is a button, not a side effect
 
-Every other page here changes a prop and lets the element update in place.
-This one rebuilds the viewer.
+Most controls here update the live element **in place** — toggle `disable-pan`
+and you can immediately try a two-finger drag against the same view, with the
+same camera, and see the difference.
 
-`loading` and `reveal` only do anything **while a model is loading**. Toggling
-them on a viewer that has already loaded does nothing whatsoever — so a page
-that updated in place would look broken for precisely the two settings a reader
-is least likely to believe. Remounting makes them observable.
+`loading` and `reveal` are the exception: they only act **while a model is
+loading**, so they do nothing to a viewer that has already loaded. That is what
+the *Reload the model* button is for.
 
-The id is unchanged across the rebuild, so callbacks keyed on it keep working.
-Only the element is new.
+.. admonition::This page shipped with that the wrong way round
+    :icon: radix-icons:exclamation-triangle
+    :color: orange
+
+    The first version rebuilt the viewer on *every* control change, so that
+    `loading` and `reveal` would always be observable. It made everything else
+    worse: toggling `disable-pan` reloaded the model and reset the camera, so
+    the attribute worked and there was no way to *see* that it had — and the
+    remount reset the idle timer, so `interaction-prompt: none` caused the
+    prompt to **reappear** rather than stop.
+
+    Reported from testing, and the fix is the split above. It is a good example
+    of a demo page being wrong in a way the code is not: every attribute
+    reached the element correctly the whole time.
 
 ---
 

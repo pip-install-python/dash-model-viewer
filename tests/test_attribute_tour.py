@@ -31,8 +31,8 @@ def _build(**kw):
         skybox=False, skybox_height=0, loading="auto", reveal="auto",
     )
     args.update(kw)
-    viewer, readout = page.rebuild(*args.values())
-    return viewer.attributes, readout
+    attrs, readout = page.apply_attributes(*args.values())
+    return attrs, readout
 
 
 # --------------------------------------------------------------------------
@@ -104,12 +104,36 @@ def test_a_zero_height_is_not_sent():
 # --------------------------------------------------------------------------
 
 
-def test_the_viewer_id_survives_the_rebuild():
-    """The page remounts so `loading` and `reveal` are observable. If the id
-    changed, anything keyed on it would silently stop working."""
-    first, _ = page.rebuild(False, False, False, "1 1 1", False, 0, "auto", "auto")
-    second, _ = page.rebuild(True, True, True, "2 2 2", True, 2, "eager", "interaction")
+def test_the_viewer_id_survives_a_reload():
+    """The reload button remounts so `loading` and `reveal` are observable. If
+    the id changed, the attributes callback would stop finding it."""
+    first = page.viewer(page.build_attrs(False, False, False, "1 1 1", False, 0, "auto", "auto"))
+    second = page.reload_model(1, True, True, True, "2 2 2", True, 2, "eager", "interaction")
     assert first.id == second.id == "at-viewer"
+
+
+def test_only_the_reload_button_remounts():
+    """THE DEFECT THIS PAGE SHIPPED WITH. Every control used to rebuild the
+    viewer, so toggling `disable-pan` reloaded the model and reset the camera —
+    the attribute worked and was impossible to see — and the remount reset the
+    idle timer, so `interaction-prompt: none` made the prompt REAPPEAR.
+
+    The attributes now update in place; only the button remounts.
+    """
+    source = (REPO / "docs" / "attribute-tour" / "attribute_tour.py").read_text()
+    mount_cb = source.split('Output("at-mount", "children")')[1].split("def ")[0]
+    assert 'Input("at-reload"' in mount_cb, "the remount must be button-driven"
+    for control in ("at-pan", "at-tap", "at-prompt", "at-scale"):
+        assert f'Input("{control}"' not in mount_cb, (
+            f"{control} still triggers a remount, which hides what it does"
+        )
+
+
+def test_the_attributes_callback_updates_the_element_in_place():
+    source = (REPO / "docs" / "attribute-tour" / "attribute_tour.py").read_text()
+    assert 'Output("at-viewer", "attributes")' in source, (
+        "attributes must reach the live element, not a rebuilt one"
+    )
 
 
 def test_loading_and_reveal_always_reach_the_element():
