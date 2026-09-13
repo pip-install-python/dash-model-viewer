@@ -1,0 +1,656 @@
+{
+  "version": 1,
+  "name": "Colonnade",
+  "notes": "exactly 28 parts \u2014 the inclusive limit",
+  "parts": [
+    {
+      "color": "#7A8B99",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column0",
+      "position": {
+        "x": 1.6,
+        "y": 0.65,
+        "z": 0.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#5C6B78",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column1",
+      "position": {
+        "x": 1.545,
+        "y": 0.65,
+        "z": 0.414
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#9AA7B1",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column2",
+      "position": {
+        "x": 1.386,
+        "y": 0.65,
+        "z": 0.8
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#48555F",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column3",
+      "position": {
+        "x": 1.131,
+        "y": 0.65,
+        "z": 1.131
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#7A8B99",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column4",
+      "position": {
+        "x": 0.8,
+        "y": 0.65,
+        "z": 1.386
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#5C6B78",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column5",
+      "position": {
+        "x": 0.414,
+        "y": 0.65,
+        "z": 1.545
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#9AA7B1",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column6",
+      "position": {
+        "x": 0.0,
+        "y": 0.65,
+        "z": 1.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#48555F",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column7",
+      "position": {
+        "x": -0.414,
+        "y": 0.65,
+        "z": 1.545
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#7A8B99",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column8",
+      "position": {
+        "x": -0.8,
+        "y": 0.65,
+        "z": 1.386
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#5C6B78",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column9",
+      "position": {
+        "x": -1.131,
+        "y": 0.65,
+        "z": 1.131
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#9AA7B1",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column10",
+      "position": {
+        "x": -1.386,
+        "y": 0.65,
+        "z": 0.8
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#48555F",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column11",
+      "position": {
+        "x": -1.545,
+        "y": 0.65,
+        "z": 0.414
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#7A8B99",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column12",
+      "position": {
+        "x": -1.6,
+        "y": 0.65,
+        "z": 0.0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#5C6B78",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column13",
+      "position": {
+        "x": -1.545,
+        "y": 0.65,
+        "z": -0.414
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#9AA7B1",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column14",
+      "position": {
+        "x": -1.386,
+        "y": 0.65,
+        "z": -0.8
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#48555F",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column15",
+      "position": {
+        "x": -1.131,
+        "y": 0.65,
+        "z": -1.131
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#7A8B99",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column16",
+      "position": {
+        "x": -0.8,
+        "y": 0.65,
+        "z": -1.386
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#5C6B78",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column17",
+      "position": {
+        "x": -0.414,
+        "y": 0.65,
+        "z": -1.545
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#9AA7B1",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column18",
+      "position": {
+        "x": -0.0,
+        "y": 0.65,
+        "z": -1.6
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#48555F",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column19",
+      "position": {
+        "x": 0.414,
+        "y": 0.65,
+        "z": -1.545
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#7A8B99",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column20",
+      "position": {
+        "x": 0.8,
+        "y": 0.65,
+        "z": -1.386
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#5C6B78",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column21",
+      "position": {
+        "x": 1.131,
+        "y": 0.65,
+        "z": -1.131
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#9AA7B1",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column22",
+      "position": {
+        "x": 1.386,
+        "y": 0.65,
+        "z": -0.8
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#48555F",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "column23",
+      "position": {
+        "x": 1.545,
+        "y": 0.65,
+        "z": -0.414
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.7,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.16,
+        "y": 1.3,
+        "z": 0.16
+      }
+    },
+    {
+      "color": "#3B4348",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "floor",
+      "position": {
+        "x": 0,
+        "y": 0.0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.9,
+      "shape": "plane",
+      "size": {
+        "x": 4.0,
+        "y": 0.02,
+        "z": 4.0
+      }
+    },
+    {
+      "color": "#9AA7B1",
+      "emissive_strength": 0.0,
+      "metallic": 0.6,
+      "name": "ring",
+      "position": {
+        "x": 0,
+        "y": 1.32,
+        "z": 0
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.35,
+      "shape": "torus",
+      "size": {
+        "x": 3.6,
+        "y": 0.1,
+        "z": 0.18
+      }
+    },
+    {
+      "color": "#2F3538",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "plinth",
+      "position": {
+        "x": 0,
+        "y": 0.12,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.85,
+      "shape": "box",
+      "size": {
+        "x": 1.0,
+        "y": 0.24,
+        "z": 1.0
+      }
+    },
+    {
+      "color": "#C9D1D6",
+      "emissive_strength": 0.0,
+      "metallic": 0.3,
+      "name": "finial",
+      "position": {
+        "x": 0,
+        "y": 1.7,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.4,
+      "shape": "cone",
+      "size": {
+        "x": 0.5,
+        "y": 0.7,
+        "z": 0.5
+      }
+    }
+  ],
+  "provenance": {
+    "generated": "2026-09-12",
+    "model": "hand-authored",
+    "usd": 0.0
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "name": "Brazier",
+  "notes": "emissive_strength at its ceiling of 1.0",
+  "parts": [
+    {
+      "color": "#3A2E26",
+      "emissive_strength": 0.0,
+      "metallic": 0.4,
+      "name": "bowl",
+      "position": {
+        "x": 0,
+        "y": 0.55,
+        "z": 0
+      },
+      "rotation": {
+        "x": 180,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.6,
+      "shape": "cone",
+      "size": {
+        "x": 0.9,
+        "y": 0.45,
+        "z": 0.9
+      }
+    },
+    {
+      "color": "#3A2E26",
+      "emissive_strength": 0.0,
+      "metallic": 0.4,
+      "name": "stem",
+      "position": {
+        "x": 0,
+        "y": 0.3,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.6,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.14,
+        "y": 0.6,
+        "z": 0.14
+      }
+    },
+    {
+      "color": "#3A2E26",
+      "emissive_strength": 0.0,
+      "metallic": 0.4,
+      "name": "foot",
+      "position": {
+        "x": 0,
+        "y": 0.04,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.6,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.5,
+        "y": 0.08,
+        "z": 0.5
+      }
+    },
+    {
+      "color": "#FF7A3D",
+      "emissive_strength": 1.0,
+      "metallic": 0.0,
+      "name": "embers",
+      "position": {
+        "x": 0,
+        "y": 0.62,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.5,
+      "shape": "sphere",
+      "size": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.5
+      }
+    },
+    {
+      "color": "#FFC15E",
+      "emissive_strength": 1.0,
+      "metallic": 0.0,
+      "name": "flame",
+      "position": {
+        "x": 0,
+        "y": 1.0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.4,
+      "shape": "cone",
+      "size": {
+        "x": 0.3,
+        "y": 0.55,
+        "z": 0.3
+      }
+    }
+  ],
+  "provenance": {
+    "generated": "2026-09-12",
+    "model": "hand-authored",
+    "usd": 0.0
+  }
+}

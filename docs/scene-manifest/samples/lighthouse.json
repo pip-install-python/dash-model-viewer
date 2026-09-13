@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "name": "Lighthouse",
+  "notes": "a tapered tower with a warm lamp",
+  "parts": [
+    {
+      "color": "#E8E4DC",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "tower",
+      "position": {
+        "x": 0,
+        "y": 1.0,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.8,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.4,
+        "y": 2.0,
+        "z": 0.4
+      }
+    },
+    {
+      "color": "#FFC15E",
+      "emissive_strength": 1.0,
+      "metallic": 0.1,
+      "name": "lamp",
+      "position": {
+        "x": 0,
+        "y": 2.1,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.3,
+      "shape": "sphere",
+      "size": {
+        "x": 0.18,
+        "y": 0.18,
+        "z": 0.18
+      }
+    }
+  ],
+  "provenance": {
+    "generated": "2026-09-12",
+    "model": "hand-authored",
+    "prompt": "a brutalist lighthouse at dusk",
+    "usd": 0.0
+  }
+}

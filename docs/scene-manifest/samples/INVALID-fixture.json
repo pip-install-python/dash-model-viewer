@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "name": "Broken on purpose",
+  "notes": "a refusal fixture: emissive_strength is above its ceiling",
+  "parts": [
+    {
+      "name": "lamp",
+      "shape": "sphere",
+      "size": {
+        "x": 0.4,
+        "y": 0.4,
+        "z": 0.4
+      },
+      "position": {
+        "x": 0,
+        "y": 0.2,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "color": "#FFC15E",
+      "metallic": 0.0,
+      "roughness": 0.8,
+      "emissive_strength": 3.0
+    }
+  ]
+}

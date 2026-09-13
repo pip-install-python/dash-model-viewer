@@ -142,9 +142,38 @@ def test_the_page_commits_to_version_1_not_changing_meaning(prose):
 # --------------------------------------------------------------------------
 
 
-def test_the_page_says_the_samples_were_generated_locally(prose):
-    assert "generated locally" in prose.lower()
+def test_the_page_is_honest_about_where_the_samples_came_from(prose):
+    """A DEVIATION from the seat's spec, stated rather than slipped in.
+
+    The spec said the samples are "generated locally with keys". They are
+    HAND-AUTHORED, for two reasons: a model will not produce exactly 28 parts
+    on request, and the inclusive limit is the thing worth proving on the wire;
+    and a hand-authored file costs nothing to regenerate when the schema gains
+    a version 2.
+
+    So the page must not claim a model wrote them, and their provenance must
+    not name one.
+    """
+    assert "hand-authored, not model output" in prose.lower()
     assert "carries no provider keys" in prose.lower()
+    assert "generated locally, with api keys" not in prose.lower()
+
+
+def test_no_sample_claims_a_model_it_did_not_come_from():
+    """The honesty above, as a property of the files rather than the prose."""
+    import json
+
+    samples = REPO / "docs" / "scene-manifest" / "samples"
+    files = sorted(samples.glob("*.json"))
+    assert files, "no samples to check"
+    for path in files:
+        provenance = json.loads(path.read_text(encoding="utf-8")).get("provenance")
+        if not provenance:
+            continue
+        assert provenance.get("model") == "hand-authored", (
+            f"{path.name} names {provenance.get('model')!r} as its author"
+        )
+        assert provenance.get("usd", 0) == 0, f"{path.name} claims a cost"
 
 
 def test_the_page_states_the_no_store_rule(prose):
