@@ -1,0 +1,68 @@
+{
+  "_proposal": "A PROPOSAL for the owner's Q2, not a decision. Eight prompts, fixed, so the v1-vs-v2 comparison measures the prompt and the vocabulary rather than taste. Replace any or all of them: the classes matter more than the subjects.",
+  "_classes": {
+    "repetition": "Has something that appears several times, so `defs` + `ref` can show their worth. v2 should use fewer written entries AND spend the saved budget on detail; if it does neither, the vocabulary is not earning.",
+    "silhouette": "Wants a profile no primitive has. Reserved for G3's extrude/lathe \u2014 these should look CONSTRAINED under both v1 and v2, which is the control that proves G3 was the missing piece rather than the prompt.",
+    "box-dominant": "Almost no curved masses. The radius/diameter bug (note 197) halved every sphere, cylinder, cone and torus, so a box-dominant subject is the one that was NOT affected. Without it, the before/after cannot separate 'v2 is better' from 'the curves are no longer half size'.",
+    "unsuited": "Beyond any parts list \u2014 organic, jointed, or needing hundreds of elements. Included deliberately so the table has a floor. If v2 scores well here something is wrong with the measurement, not right with v2."
+  },
+  "prompts": [
+    {
+      "id": "cart",
+      "class": "repetition",
+      "text": "a hand cart with four spoked wheels and a plank bed",
+      "why": "The worked example's own subject. If the prompt teaches `defs` at all, this is where it shows."
+    },
+    {
+      "id": "colonnade",
+      "class": "repetition",
+      "text": "a ruined colonnade, eight fluted columns on a stepped plinth",
+      "why": "Repetition with variation \u2014 the columns should differ in placement, not in piece. Curve-dominant, so note 197 hit it hardest."
+    },
+    {
+      "id": "chandelier",
+      "class": "repetition",
+      "text": "a brass chandelier with six arms, each holding a lit candle",
+      "why": "Repetition plus emissive restraint; six arms is the case where writing it out by hand eats the budget."
+    },
+    {
+      "id": "bench",
+      "class": "box-dominant",
+      "text": "a brutalist concrete bench, two slabs and a cantilever",
+      "why": "THE CONTROL for note 197: almost no curved parts, so it rendered correctly before the prompt fix. Its score should move least."
+    },
+    {
+      "id": "vase",
+      "class": "silhouette",
+      "text": "a tall ceramic vase with a flared lip and a narrow waist",
+      "why": "A lathe profile and nothing else. Should stay visibly approximate until G3."
+    },
+    {
+      "id": "lantern",
+      "class": "silhouette",
+      "text": "a five-pointed star lantern glowing from inside",
+      "why": "An extruded polygon. A five-pointed star is the shape six primitives cannot fake."
+    },
+    {
+      "id": "figure",
+      "class": "unsuited",
+      "text": "a seated human figure, hands on knees",
+      "why": "The floor. Jointed and organic; a parts list should read as a mannequin at best."
+    },
+    {
+      "id": "oak",
+      "class": "unsuited",
+      "text": "an oak tree in full summer leaf",
+      "why": "The other floor. Foliage needs hundreds of elements; 28 leaf parts cannot."
+    }
+  ],
+  "_measured_per_prompt_and_model": [
+    "refused-by-importer (yes/no and the refusal's path)",
+    "leaf parts after expansion",
+    "defs used, and placements per def",
+    "tokens in / out",
+    "usd",
+    "does the GLB load in a fresh viewer"
+  ],
+  "_note": "The v1 leg is the CORRECTED v1 prompt (note 197 fixed). A table that credited v2 with that fix would measure nothing."
+}
