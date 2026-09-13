@@ -42,6 +42,17 @@ SCENE = {
 }
 
 
+#: /sculpt-from-image's .glb download also takes the texture switch and the
+#: uploaded image; /generative-3d has no image to drape. The default here is
+#: "off", so every assertion below is about the UNTEXTURED file — the one that
+#: must stay byte-identical to what item 2 shipped.
+GLB_EXTRA = {"si": ("off", None), "g3": ()}
+
+
+def _save_glb(page, prefix, clicks, stored):
+    return page.save_glb(clicks, stored, *GLB_EXTRA[prefix])
+
+
 def _finished(prefix):
     """Drive a page's poll to completion and return (module, stored manifest)."""
     module, args = PAGES[prefix]
@@ -79,7 +90,7 @@ def test_the_exported_manifest_re_renders_the_SAME_bytes(prefix):
     so the file is a way back to the object, not a souvenir."""
     page, stored = _finished(prefix)
     exported = page.save_manifest(1, stored)["content"]
-    glb_now = base64.b64decode(page.save_glb(1, stored)["content"])
+    glb_now = base64.b64decode(_save_glb(page, prefix, 1, stored)["content"])
     glb_from_file, _notes, _used = manifest.render(manifest.loads(exported))
     assert glb_from_file == glb_now
 
@@ -87,7 +98,7 @@ def test_the_exported_manifest_re_renders_the_SAME_bytes(prefix):
 @pytest.mark.parametrize("prefix", PAGES)
 def test_the_glb_download_is_a_real_glb(prefix):
     page, stored = _finished(prefix)
-    payload = page.save_glb(1, stored)
+    payload = _save_glb(page, prefix, 1, stored)
     assert payload["base64"] is True
     raw = base64.b64decode(payload["content"])
     assert raw[:4] == b"glTF"
@@ -139,7 +150,7 @@ def test_no_download_before_a_build(prefix):
 
     page, _stored = _finished(prefix)
     assert page.save_manifest(1, None) is no_update
-    assert page.save_glb(1, None) is no_update
+    assert _save_glb(page, prefix, 1, None) is no_update
 
 
 @pytest.mark.parametrize("prefix", PAGES)
@@ -149,7 +160,7 @@ def test_a_corrupt_store_does_not_raise_into_the_download(prefix):
     page, _stored = _finished(prefix)
     broken = {"version": 1, "parts": [{"shape": "nope"}]}
     assert page.save_manifest(1, broken) is no_update
-    assert page.save_glb(1, broken) is no_update
+    assert _save_glb(page, prefix, 1, broken) is no_update
 
 
 @pytest.mark.parametrize("prefix", PAGES)

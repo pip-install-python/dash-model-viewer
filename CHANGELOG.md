@@ -95,6 +95,26 @@ at the end of this entry.
 
 ### Added
 
+- **Drape the uploaded image over the sculpture it produced.**
+  [Sculpt from an Image](/sculpt-from-image) gains a three-state texture
+  switch: **Off** (the generated colours), **Preview** (draped on screen, the
+  `.glb` still downloads plain, and the button relabels itself to say so) and
+  **Include** (baked into the download as `…-textured.glb`). The UVs are a
+  front planar projection computed from *world* position after the parts are
+  placed, so the parts together carry one picture rather than each wearing its
+  own copy — the unit-square-per-primitive alternative is what makes a
+  28-part sculpture look like 28 small photographs. Draped parts take a white
+  base colour, because glTF multiplies base colour into the texture and a
+  brown part would otherwise stain its patch of the photo; metallic, roughness
+  and emissive stay per part, so a glowing part still glows. Switching back to
+  Off is byte-identical to never having textured. The manifest stays
+  textureless — draping happens at render time — so a saved manifest is the
+  same file either way, and the whole switch works on a host with **no API
+  key**: a bundled sample plus an uploaded picture bakes and downloads. New in
+  `lib/texture.py`; embedded images are now deduplicated by content in
+  `lib/glb.py`, without which a realistic 800 KB photograph across 28 parts
+  would come to ~23 MB against the 3 MB ceiling.
+
 - `camera_change_debounce` (default `100` ms), a **required** guard rather than
   an optimisation. `camera-change` and `progress` fire at frame rate, so
   unthrottled two-way camera props are a callback storm; and because

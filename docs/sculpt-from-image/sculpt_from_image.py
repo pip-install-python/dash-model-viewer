@@ -7,7 +7,7 @@ import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
 from lib import (build_stream, manifest, model_picker, poll_guard, sculptor,
-                 spend, uploads)
+                 spend, texture, uploads)
 
 #: 4 MB, the same cap /texture-upload states, from the same module. A vision
 #: model resizes anything larger anyway, so a bigger allowance would buy a
@@ -109,6 +109,23 @@ component = html.Div(
             maxHeight=0,
             children=dmc.Code(id="si-json", block=True),
             mt="xs",
+        ),
+        dmc.Group(
+            [
+                dmc.Text("Texture", size="xs", c="dimmed"),
+                dmc.SegmentedControl(
+                    id="si-texture",
+                    value="off",
+                    size="xs",
+                    data=[
+                        {"label": "Off", "value": "off"},
+                        {"label": "Preview", "value": "preview"},
+                        {"label": "Include", "value": "include"},
+                    ],
+                ),
+                dmc.Text(id="si-texture-note", size="xs", c="dimmed"),
+            ],
+            gap="xs", mt="sm", align="center",
         ),
         dmc.Group(
             [
@@ -280,6 +297,79 @@ poll_guard.register("si", "si-status", resets=[
 ])
 
 
+#: What each switch position means, in one place, so the note under the
+#: control, the button label and the download cannot disagree about it.
+TEXTURE_MODES = ("off", "preview", "include")
+
+
+def texture_png(image_contents):
+    """The uploaded image, decoded and downscaled for baking — or None.
+
+    Reuses `lib/uploads.py`'s rules rather than a second set: this is the same
+    upload the vision model read, and two answers to "is this acceptable" is
+    how one page silently gets a different cap from the other.
+    """
+    raw, _media_type, _message = uploads.decode_image(
+        image_contents, max_bytes=MAX_IMAGE_BYTES
+    )
+    if raw is None:
+        return None
+    try:
+        return texture.prepare(raw)
+    except Exception:                                     # noqa: BLE001
+        # Pillow raises a family of its own errors for a truncated or hostile
+        # raster. A texture that cannot be prepared must not take the page
+        # down — the sculpture is still there to look at untextured.
+        return None
+
+
+def _note(mode, has_image, has_manifest):
+    if mode == "off":
+        return "The sculpture keeps its generated colours."
+    if not has_manifest:
+        return "Sculpt something first."
+    if not has_image:
+        return "Upload an image to drape it."
+    if mode == "preview":
+        return "Draped on screen only — the .glb downloads untextured."
+    return "Draped, and baked into the .glb you download."
+
+
+@callback(
+    Output("si-viewer", "src", allow_duplicate=True),
+    Output("si-texture-note", "children"),
+    Output("si-save-glb", "children"),
+    Input("si-texture", "value"),
+    Input("si-manifest", "data"),
+    State("si-image", "data"),
+    prevent_initial_call=True,
+)
+def retexture(mode, stored, image):
+    """Re-render the stored sculpture at the chosen texture setting.
+
+    NO MODEL IS CALLED. The manifest is already in hand and `lib/glb.py` is
+    deterministic, so switching costs a rebuild and nothing else — which is the
+    reason the switch can exist at all, and the reason it is a switch rather
+    than a checkbox you set before paying for a sculpt.
+
+    `si-manifest` is an Input, not a State, so a fresh sculpt comes out at
+    whatever setting is currently chosen instead of silently reverting to Off.
+    """
+    mode = mode if mode in TEXTURE_MODES else "off"
+    label = "Download .glb (untextured)" if mode == "preview" else "Download .glb"
+    if not stored:
+        return no_update, _note(mode, bool(image), False), label
+
+    png = texture_png(image) if mode in ("preview", "include") else None
+    try:
+        data, _notes, _used = manifest.render(stored, texture_png=png)
+    except (manifest.ManifestError, ValueError):
+        return no_update, _note(mode, bool(image), True), label
+    return (sculptor.to_data_url(data),
+            _note(mode, png is not None, True),
+            label)
+
+
 @callback(
     Output("si-dl-json", "data"),
     Input("si-save-json", "n_clicks"),
@@ -307,14 +397,22 @@ def save_manifest(_clicks, stored):
     Output("si-dl-glb", "data"),
     Input("si-save-glb", "n_clicks"),
     State("si-manifest", "data"),
+    State("si-texture", "value"),
+    State("si-image", "data"),
     prevent_initial_call=True,
 )
-def save_glb(_clicks, stored):
+def save_glb(_clicks, stored, mode, image):
     """Rebuilt from the stored manifest on demand, not carried as bytes.
 
     `lib/glb.py` is deterministic, so this is the same file the viewer is
     showing — and it keeps a megabyte of binary out of the browser's store.
     Nothing is written to disk at any point.
+
+    ONLY `include` BAKES. Under `preview` the download is deliberately the
+    plain sculpture, and the button says so, because a file that quietly
+    differs from what is on screen is worse than one that plainly does not
+    match. `off` and `preview` therefore produce the same bytes as before the
+    feature existed.
 
     Two callbacks rather than one dispatching on `ctx.triggered_id`: a callback
     that reads the context cannot be called from a test, and these two are
@@ -322,9 +420,13 @@ def save_glb(_clicks, stored):
     """
     if not stored:
         return no_update
+    png = texture_png(image) if mode == "include" else None
     try:
         m = manifest.validate(stored)
-        data, _notes, _used = manifest.render(m)
-    except manifest.ManifestError:
+        data, _notes, _used = manifest.render(m, texture_png=png)
+    except (manifest.ManifestError, ValueError):
         return no_update
-    return dcc.send_bytes(data, manifest.filename(m, "glb"))
+    stem = manifest.filename(m, "glb")
+    if png is not None:
+        stem = stem[:-4] + "-textured.glb"
+    return dcc.send_bytes(data, stem)

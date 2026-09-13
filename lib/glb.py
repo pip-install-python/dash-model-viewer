@@ -137,6 +137,34 @@ def _euler_to_quat(rx: float, ry: float, rz: float) -> List[float]:
     ]
 
 
+def world_positions(mesh: "Mesh") -> List[Vec3]:
+    """The mesh's vertices where the scene actually puts them.
+
+    Geometry is authored in object space and placed by the node's transform, so
+    anything reasoning about where a part IS — a bounding box, a planar
+    projection — has to apply that transform first. It lives HERE so there is
+    one implementation rather than one per caller: a second copy of the
+    placement maths is the same mistake as a second copy of the size rules, and
+    that one made every curved part half its intended size.
+    """
+    qx, qy, qz, qw = _euler_to_quat(*mesh.rotation_euler)
+    sx, sy, sz = mesh.scale
+    tx, ty, tz = mesh.translation
+    out: List[Vec3] = []
+    for px, py, pz in mesh.positions:
+        x, y, z = px * sx, py * sy, pz * sz
+        # v + 2q_w(q_v x v) + 2q_v x (q_v x v)
+        ax = 2.0 * (qy * z - qz * y)
+        ay = 2.0 * (qz * x - qx * z)
+        az = 2.0 * (qx * y - qy * x)
+        out.append((
+            x + qw * ax + (qy * az - qz * ay) + tx,
+            y + qw * ay + (qz * ax - qx * az) + ty,
+            z + qw * az + (qx * ay - qy * ax) + tz,
+        ))
+    return out
+
+
 class GLBBuilder:
     """Accumulates meshes, then emits one self-contained `.glb`."""
 
@@ -193,6 +221,7 @@ class GLBBuilder:
 
         # Materials (and their textures) first — meshes reference them by index.
         material_index: Dict[int, int] = {}
+        texture_index: Dict[bytes, int] = {}
         for mesh in self._meshes:
             key = id(mesh.material)
             if key in material_index:
@@ -210,11 +239,19 @@ class GLBBuilder:
             if any(c > 0 for c in mat.emissive):
                 entry["emissiveFactor"] = mat.emissive
             if mat.texture_png:
-                img_view = view(mat.texture_png)
-                images.append({"bufferView": img_view, "mimeType": "image/png"})
-                textures.append({"source": len(images) - 1})
+                # Keyed on the BYTES, not on the material: one photo draped
+                # across a 28-part sculpture is 28 materials referencing one
+                # image. Embedding it per material instead would multiply a
+                # 600 KB texture by the part count and blow MAX_GLB_BYTES on
+                # its own, which is what makes a shared texture affordable.
+                if mat.texture_png not in texture_index:
+                    img_view = view(mat.texture_png)
+                    images.append({"bufferView": img_view,
+                                   "mimeType": "image/png"})
+                    textures.append({"source": len(images) - 1})
+                    texture_index[mat.texture_png] = len(textures) - 1
                 entry["pbrMetallicRoughness"]["baseColorTexture"] = {
-                    "index": len(textures) - 1
+                    "index": texture_index[mat.texture_png]
                 }
             materials.append(entry)
             material_index[key] = len(materials) - 1

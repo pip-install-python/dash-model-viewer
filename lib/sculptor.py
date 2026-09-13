@@ -34,7 +34,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from lib import build_stream, glb, openai_client, spend
+from lib import build_stream, glb, openai_client, spend, texture
 
 MODEL = "claude-opus-5"
 MAX_TOKENS = 4000
@@ -413,7 +413,8 @@ def _clamp(value: Any, low: float, high: float, default: float) -> float:
         return default
 
 
-def build(scene: Dict[str, Any]) -> Tuple[bytes, List[str], int]:
+def build(scene: Dict[str, Any],
+          texture_png: Optional[bytes] = None) -> Tuple[bytes, List[str], int]:
     """Turn a validated parts list into glb bytes. Pure, and unit-testable."""
     notes: List[str] = []
     parts = scene.get("parts") or []
@@ -423,6 +424,7 @@ def build(scene: Dict[str, Any]) -> Tuple[bytes, List[str], int]:
         parts = parts[:MAX_PARTS]
 
     builder = glb.GLBBuilder()
+    built: List[glb.Mesh] = []
     used = 0
     for i, part in enumerate(parts):
         shape = str(part.get("shape", "")).lower()
@@ -476,11 +478,20 @@ def build(scene: Dict[str, Any]) -> Tuple[bytes, List[str], int]:
         else:  # plane
             mesh = glb.plane(w, d, **kw)
 
-        builder.add(mesh)
+        built.append(mesh)
         used += 1
 
     if not used:
         raise ValueError("no usable parts in the scene")
+
+    # Draped AFTER placement, over the finished geometry, so one image
+    # covers the whole model once instead of repeating per primitive. It
+    # reads world positions, so it is indifferent to how the parts were
+    # built — see lib/texture.py.
+    if texture_png:
+        texture.drape(built, texture_png)
+        notes.append("draped the uploaded image across the sculpture")
+    builder.extend(built)
 
     data = builder.build()
     if len(data) > MAX_GLB_BYTES:

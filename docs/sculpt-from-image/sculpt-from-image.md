@@ -74,6 +74,52 @@ page, so the two cannot drift into stating different caps.
 
 ---
 
+### Wearing the picture: the texture switch
+
+The sculpture reads the image as *masses, proportions and palette*. The switch
+under the viewer does the other thing — it lays the photograph itself over the
+form, as a slide projector would.
+
+| Setting | On screen | What the `.glb` button gives you |
+| :-- | :-- | :-- |
+| **Off** | the generated colours | the plain sculpture |
+| **Preview** | draped | **the plain sculpture** — the button says so |
+| **Include** | draped | the image baked in, as `…-textured.glb` |
+
+Preview exists so that trying the texture costs nothing and commits to nothing.
+A file that quietly differed from what was on screen would be worse than one
+that plainly does not match, so the button relabels itself rather than
+guessing.
+
+**What draping changes, exactly.** glTF multiplies a material's base colour
+into its texture, so a part keeping its generated colour would stain its patch
+of the photo — a brown crate would tint that region brown. Draped parts
+therefore take a white base colour and the picture shows true. **Nothing else
+about the surface changes**: metallic, roughness and emissive stay per part, so
+a glowing part still glows through the texture. Switching back to Off restores
+the palette exactly — the untextured file is byte-for-byte what it was before
+the feature existed.
+
+**One picture, projected once.** The UVs are computed from *world* position
+after the parts are placed, across the model's front-facing rectangle, so the
+parts together carry one image rather than each wearing its own copy. The
+alternative — the unit square on every primitive — is what makes a
+twenty-eight-part sculpture look like twenty-eight small photographs. It also
+means the projection does not care what the parts are or how they got there.
+
+The image is embedded **once** and shared by every part. That is what keeps it
+affordable: a realistic photograph at the 640 px cap is around 800 KB, and
+embedding it per part would put a 28-part sculpture near 23 MB against a 3 MB
+ceiling.
+
+**The manifest never mentions the texture.** Draping happens when the sculpture
+is rendered, not when it is described, so a saved manifest says the same thing
+either way and stays a stable, diffable record. It also means this switch works
+on a host with **no API key at all** — load a sample on
+[Scene Manifest](/scene-manifest), upload a picture here, and it bakes.
+
+---
+
 ### It is the same pipeline as the text sculptor
 
 Everything downstream of the model is identical to

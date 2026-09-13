@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from lib import sculptor
 
@@ -260,12 +260,19 @@ def from_scene(scene: Dict[str, Any], provenance: Dict[str, Any] | None = None
     return out
 
 
-def render(manifest: Dict[str, Any]) -> Tuple[bytes, List[str], int]:
-    """Validate, then build. `provenance` is not passed on — nothing reads it."""
+def render(manifest: Dict[str, Any],
+           texture_png: Optional[bytes] = None) -> Tuple[bytes, List[str], int]:
+    """Validate, then build. `provenance` is not passed on — nothing reads it.
+
+    `texture_png` is a RENDER option, not part of the scene: the manifest stays
+    textureless by design, so its bytes are identical whether or not it was ever
+    draped, and an untextured `.glb` built today matches one built before the
+    feature existed. See lib/texture.py.
+    """
     validated = validate(manifest)
     scene = {k: v for k, v in validated.items()
              if k not in ("version", "provenance")}
-    return sculptor.build(scene)
+    return sculptor.build(scene, texture_png=texture_png)
 
 
 def filename(manifest: Dict[str, Any], extension: str) -> str:
