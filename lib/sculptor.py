@@ -43,6 +43,55 @@ EFFORT = "medium"
 #: The vocabulary. Everything the model may build with, and nothing else.
 SHAPES = ("box", "sphere", "cylinder", "cone", "torus", "plane")
 
+#: What each `size` component MEANS, per shape — the single source for both the
+#: prompt the model reads and the table on /scene-manifest. `None` means the
+#: builder ignores that component.
+#:
+#: THIS TABLE EXISTS BECAUSE THE PROMPT AND THE CODE DISAGREED. The prompt said
+#: "size = radius" for sphere, cylinder, cone and torus while the dispatch
+#: passes `size.x / 2` to the builders — so every curved part a model produced
+#: was HALF the size it intended, while every box and plane was exact. The
+#: silhouette was right and only the curved masses were wrong, which is
+#: invisible to read and very hard to attribute.
+#:
+#: A prompt is documentation that a model reads. It is pinned to the enforcing
+#: code for the same reason the page is.
+SIZE_SEMANTICS = {
+    "box": ("width", "height", "depth"),
+    "sphere": ("diameter", None, None),
+    "cylinder": ("diameter", "height", None),
+    "cone": ("base diameter", "height", None),
+    "torus": ("ring diameter", None, "tube diameter"),
+    "plane": ("width", None, "depth"),
+}
+
+#: Shapes whose `size.x` the dispatch halves. For these the prompt must never
+#: say "radius"; `tests/test_components.py` has no opinion on prompts, so
+#: `tests/test_prompt_matches_the_code.py` holds this.
+HALVED_SHAPES = ("sphere", "cylinder", "cone", "torus")
+
+
+def size_semantics_rows():
+    """`[(shape, "size.x = …, size.y = …"), …]` — rendered into the prompt."""
+    rows = []
+    for shape in SHAPES:
+        parts = [
+            f"size.{axis} = {meaning}"
+            for axis, meaning in zip("xyz", SIZE_SEMANTICS[shape])
+            if meaning
+        ]
+        rows.append((shape, ", ".join(parts)))
+    return rows
+
+
+def _vocabulary_block():
+    width = max(len(s) for s in SHAPES)
+    return "\n".join(
+        f"  {shape:<{width}}  {meaning}"
+        for shape, meaning in size_semantics_rows()
+    )
+
+
 #: Hard ceilings. A model asked for "a city" will happily emit 400 parts; at
 #: ~1.5 KB of geometry each that is a data URL no browser will accept.
 MAX_PARTS = 28
@@ -128,12 +177,11 @@ Google's <model-viewer>. You are a scene compiler, not a modeller: you choose
 shapes, places and materials, and code builds the geometry exactly.
 
 THE VOCABULARY — you may use nothing else:
-  box       size = width, height, depth
-  sphere    size = radius (width used)
-  cylinder  size = radius (width), height
-  cone      size = radius (width), height
-  torus     size = radius (width), tube thickness (depth)
-  plane     size = width, depth   (a flat ground/backdrop card)
+{_vocabulary_block()}
+
+SIZE IS ALWAYS A FULL WIDTH, NEVER A RADIUS. A sphere with size.x = 0.4 is
+0.4m across, not 0.8m. A torus is size.x + size.z wide overall, because the
+tube stands out on both sides of the ring.
 
 COORDINATES: right-handed, +Y is UP, -Z is away from the viewer.
 The sculpture stands ON the ground plane y=0. Nothing may sit below y=0 unless
