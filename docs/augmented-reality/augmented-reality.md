@@ -7,7 +7,7 @@ category: Interaction
 order: 2
 package: dash_model_viewer
 icon: mdi:augmented-reality
-lastmod: 2026-08-08
+lastmod: 2026-09-12
 ---
 
 .. llms_copy::Augmented Reality

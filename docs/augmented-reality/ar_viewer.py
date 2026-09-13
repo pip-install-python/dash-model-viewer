@@ -16,6 +16,21 @@ component = html.Div(
             ar_modes="webxr scene-viewer quick-look",
             ar_scale="auto",
             shadow_intensity=1,
+            # Two AR attributes with no named prop. They are set HERE rather
+            # than on /attribute-tour because only a phone in a real AR session
+            # can show whether they did anything — a desktop toggle for either
+            # would be a control that demonstrates nothing.
+            #
+            #   ar-placement="floor"  — anchor to the floor. "wall" is the other
+            #     value and is right for a frame or a television.
+            #   xr-environment        — present: light the model from the room's
+            #     estimated lighting instead of `environment-image`.
+            #
+            # `ios-src` is deliberately absent: Quick Look cannot read `.glb`,
+            # so it needs a second `.usdz` file that this repo does not ship.
+            # Setting it to a file that does not exist would break iOS AR to
+            # document an attribute.
+            attributes={"ar-placement": "floor", "xr-environment": ""},
             style={"width": "100%", "height": "400px"},
             children=[
                 dmv.Slot(

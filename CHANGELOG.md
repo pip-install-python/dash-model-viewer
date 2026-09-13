@@ -90,6 +90,20 @@ at the end of this entry.
   and `timeScale` have no attribute equivalent, so no scrubbing and no speed
   control) rather than leaving anyone hunting for a prop.
 
+- **An attribute tour.** `/attribute-tour` drives the eleven `<model-viewer>`
+  attributes that have no named prop — `scale`, `loading`, `reveal`,
+  `disable-pan`, `disable-tap`, `interaction-prompt`, `skybox-image`,
+  `skybox-height` — and documents the three only a phone can show.
+  `ar-placement` and `xr-environment` are set on `/augmented-reality` instead,
+  where a device walk can verify them; `ios-src` stays documentation-only
+  because Quick Look needs a `.usdz` this repo does not ship, and pointing it
+  at a missing file would break iOS AR in order to document an attribute. The
+  page remounts its viewer on every change, because `loading` and `reveal` do
+  nothing to a model that has already loaded. Written from an audit against
+  modelviewer.dev's own examples; `effects` and the postprocessing page are
+  deliberately out of scope, needing a separate ES-module addon that the
+  classic-script rule in `.claude/ARCHITECTURE.md` forbids.
+
 - **A picking example.** `pick_on_click` and `scene_point` were documented from
   the start and demonstrated nowhere, so nothing would have noticed if the
   shim's click path broke. `/events-and-callbacks` now runs one.
