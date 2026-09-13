@@ -82,6 +82,14 @@ at the end of this entry.
   required, so this restores two of the three; `id` stays optional, because a
   viewer with no callbacks needs none.
 
+- **An animation page.** `/animation` plays a model's built-in clips, switches
+  between them with a crossfade and pauses — with the clip list read from
+  `model_info["animations"]` rather than hardcoded, so it works for any
+  animated model. Entirely through the `attributes` escape hatch, since 1.0.0
+  ships no imperative surface; the page states what that rules out (`currentTime`
+  and `timeScale` have no attribute equivalent, so no scrubbing and no speed
+  control) rather than leaving anyone hunting for a prop.
+
 - **A picking example.** `pick_on_click` and `scene_point` were documented from
   the start and demonstrated nowhere, so nothing would have noticed if the
   shim's click path broke. `/events-and-callbacks` now runs one.
