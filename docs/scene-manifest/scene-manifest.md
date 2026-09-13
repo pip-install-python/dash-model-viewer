@@ -252,16 +252,93 @@ field**. "Invalid manifest" tells you nothing you can act on.
 
 ### Versioning
 
-- **`"version": 1`**, an integer, the first key on export.
-- **A version this build does not know is refused**, with the number in the
-  message, and is *not* partially read.
-- **Version 1 will not change meaning.** The planned additions — part groups
-  with a transform, so a wheel is defined once and instanced, and profile-based
-  shapes (extrude, lathe) for arbitrary silhouettes — are additive and will
-  arrive as **version 2**, with version 1 still readable.
+- **`"version"`**, an integer, the first key on export. This build reads
+  **1 and 2**. A version it does not know is refused whole, with the number in
+  the message, and is **not partially read** — a newer manifest may use shapes
+  this build cannot draw, and rendering the parts it recognises would hand you
+  a sculpture with pieces missing and say nothing.
+- **A generated sculpture is stamped version 1**, not 2. A model answers a flat
+  schema, so version 1 expresses its output exactly and stays readable by
+  anything that only knows version 1. The version written is the lowest one
+  that can express the sculpture, not the highest this build knows.
+- **Version 1 did not change meaning**, which was the promise the number
+  existed to make. The three samples above render byte-for-byte what they
+  rendered before version 2 existed, and a test asserts it by SHA-256.
 
-That is the promise the number exists to make: a manifest exported today renders
-the same way after those land.
+---
+
+### Version 2: defining a thing once and placing it
+
+Version 2 adds three entries, and they compose: a `defs` block that names
+sub-assemblies, a `ref` that places one, and a `group` that gathers parts under
+a shared transform.
+
+| Entry | Keys | Means |
+| :-- | :-- | :-- |
+| a part | as version 1 | draw this here |
+| **`ref`** | `ref`, `position`, *`rotation`*, *`name`* | place the named def here |
+| **`group`** | `group`, `position`, `children`, *`rotation`* | move these together |
+| **`defs.<name>`** | a part **without `position`**, or `{"children": [...]}` | a thing worth placing more than once |
+
+*Italic keys are optional.*
+
+**A def has no `position`, and that is the load-bearing rule.** A def describes
+a *thing*; a `ref` says where a copy of it goes. Because a ref carries only a
+name, a position and a rotation, it cannot restyle or resize what it places —
+so every placement of a def provably shares **one mesh and one material**. That
+is where the saving comes from, and it is a fact about the schema rather than
+the result of comparing parts and hoping.
+
+```json
+{
+  "version": 2,
+  "defs": {
+    "wheel": {
+      "name": "wheel", "shape": "torus",
+      "size": {"x": 0.5, "y": 0.5, "z": 0.12},
+      "rotation": {"x": 90, "y": 0, "z": 0},
+      "color": "#3B2F2A", "metallic": 0.1,
+      "roughness": 0.85, "emissive_strength": 0.0
+    }
+  },
+  "parts": [
+    {"ref": "wheel", "position": {"x": -0.42, "y": 0.25, "z": -0.26}},
+    {"ref": "wheel", "position": {"x": 0.42, "y": 0.25, "z": -0.26}}
+  ]
+}
+```
+
+Load **`cart.json`** in the round trip above to see it whole. Eight parts are
+drawn from four entries; the file holds four meshes rather than eight, and it is
+**69% smaller** than `cart-flat.json`, which is the same sculpture with every
+part placed by hand. Both are bundled, and a test asserts they put every node in
+exactly the same place — that is what makes them the same sculpture rather than
+two similar ones.
+
+| | `cart.json` | `cart-flat.json` |
+| :-- | --: | --: |
+| Entries written | 4 | 8 |
+| Parts drawn | 8 | 8 |
+| Meshes in the file | **4** | 8 |
+| Size | **44 KB** | 143 KB |
+
+**The limits count what is drawn.** A `ref` costs its def's leaf count every
+time it is placed, so the 28-part ceiling applies *after* expansion — four refs
+to a five-part assembly are twenty parts, because that is what the viewer
+carries. Groups nest at most **4** deep and `defs` holds at most **8** entries;
+a def that contains itself is refused by name rather than by running out of
+stack.
+
+**Rotations compose; they do not add.** A group turned about X holding a part
+turned about Y is not the same as one part turned about both — Euler angles do
+not add, and the manifest is expanded through quaternions so that the sculpture
+you wrote is the sculpture you get.
+
+**What version 2 does not change:** the exported `.glb` is still a flat scene —
+shared meshes, one node per part, no parent nodes. Grouping is an authoring
+convenience and a size saving, not something a consumer of the file sees. Making
+the authored structure survive export is a separate change and is not in this
+release.
 
 ---
 

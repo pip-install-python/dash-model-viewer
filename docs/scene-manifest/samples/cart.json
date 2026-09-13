@@ -1,0 +1,132 @@
+{
+  "version": 2,
+  "defs": {
+    "axle-pair": {
+      "children": [
+        {
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": -0.26
+          },
+          "ref": "wheel"
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 0.26
+          },
+          "ref": "wheel"
+        },
+        {
+          "color": "#4A4A4A",
+          "emissive_strength": 0.0,
+          "metallic": 0.6,
+          "name": "axle",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "rotation": {
+            "x": 90,
+            "y": 0,
+            "z": 0
+          },
+          "roughness": 0.5,
+          "shape": "cylinder",
+          "size": {
+            "x": 0.06,
+            "y": 0.52,
+            "z": 0.06
+          }
+        }
+      ]
+    },
+    "wheel": {
+      "color": "#3B2F2A",
+      "emissive_strength": 0.0,
+      "metallic": 0.1,
+      "name": "wheel",
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.85,
+      "shape": "torus",
+      "size": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.12
+      }
+    }
+  },
+  "name": "Cart",
+  "notes": "A wheel defined once and placed four times, through an axle assembly placed twice. Eight leaves, four meshes.",
+  "parts": [
+    {
+      "color": "#6B4E32",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "bed",
+      "position": {
+        "x": 0,
+        "y": 0.46,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.9,
+      "shape": "box",
+      "size": {
+        "x": 1.1,
+        "y": 0.12,
+        "z": 0.62
+      }
+    },
+    {
+      "position": {
+        "x": -0.42,
+        "y": 0.25,
+        "z": 0
+      },
+      "ref": "axle-pair"
+    },
+    {
+      "position": {
+        "x": 0.42,
+        "y": 0.25,
+        "z": 0
+      },
+      "ref": "axle-pair"
+    },
+    {
+      "color": "#6B4E32",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "handle",
+      "position": {
+        "x": 0.72,
+        "y": 0.62,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 60
+      },
+      "roughness": 0.9,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.06,
+        "y": 0.5,
+        "z": 0.06
+      }
+    }
+  ]
+}

@@ -80,7 +80,11 @@ def _finished(prefix):
 @pytest.mark.parametrize("prefix", PAGES)
 def test_a_finished_build_stores_a_valid_versioned_manifest(prefix):
     _page, stored = _finished(prefix)
-    assert stored["version"] == manifest.VERSION
+    # v1, NOT the highest version this build knows. A model answers a flat
+    # schema, so v1 expresses its output exactly and stays readable by anything
+    # that only knows v1; stamping 2 on a flat scene would narrow the audience
+    # and buy nothing. See manifest.FLAT_VERSION.
+    assert stored["version"] == manifest.FLAT_VERSION == 1
     assert manifest.validate(stored) is not None
 
 

@@ -37,24 +37,14 @@ JOINT_TOLERANCE_M = 0.02
 Box = Tuple[Tuple[float, float, float], Tuple[float, float, float]]
 
 
-def _rotate(point: Tuple[float, float, float],
-            quat: List[float]) -> Tuple[float, float, float]:
-    """Rotate a point by a quaternion (x, y, z, w)."""
-    x, y, z = point
-    qx, qy, qz, qw = quat
-    # t = 2 * (q_vec x p)
-    tx = 2.0 * (qy * z - qz * y)
-    ty = 2.0 * (qz * x - qx * z)
-    tz = 2.0 * (qx * y - qy * x)
-    return (
-        x + qw * tx + (qy * tz - qz * ty),
-        y + qw * ty + (qz * tx - qx * tz),
-        z + qw * tz + (qx * ty - qy * tx),
-    )
+def _mesh_for(part: Dict[str, Any],
+              placement: Optional[Dict[str, Any]] = None) -> Optional[glb.Mesh]:
+    """Build one part with the renderer's own dispatch, or None if unusable.
 
-
-def _mesh_for(part: Dict[str, Any]) -> Optional[glb.Mesh]:
-    """Build one part with the renderer's own dispatch, or None if unusable."""
+    `placement` carries a composed transform when the part came out of a nested
+    manifest; without it the part's own position and rotation are used, which is
+    the flat case.
+    """
     shape = str(part.get("shape", "")).lower()
     if shape not in sculptor.SHAPES:
         return None
@@ -62,7 +52,22 @@ def _mesh_for(part: Dict[str, Any]) -> Optional[glb.Mesh]:
     w = float(size.get("x", 0.5))
     h = float(size.get("y", 0.5))
     d = float(size.get("z", 0.5))
-    kw: Dict[str, Any] = dict(material=glb.Material(), name="probe")
+    if placement is not None:
+        kw: Dict[str, Any] = dict(
+            material=glb.Material(), name="probe",
+            translation=tuple(placement["position"]),
+            rotation_quat=placement["quat"],
+        )
+    else:
+        pos = part.get("position") or {}
+        rot = part.get("rotation") or {}
+        kw = dict(
+            material=glb.Material(), name="probe",
+            translation=(float(pos.get("x", 0.0)), float(pos.get("y", 0.0)),
+                         float(pos.get("z", 0.0))),
+            rotation_euler=(float(rot.get("x", 0.0)), float(rot.get("y", 0.0)),
+                            float(rot.get("z", 0.0))),
+        )
     if shape == "box":
         return glb.box(w, h, d, **kw)
     if shape == "sphere":
@@ -76,30 +81,25 @@ def _mesh_for(part: Dict[str, Any]) -> Optional[glb.Mesh]:
     return glb.plane(w, d, **kw)
 
 
-def aabb(part: Dict[str, Any]) -> Optional[Box]:
+def aabb(part: Dict[str, Any],
+         placement: Optional[Dict[str, Any]] = None) -> Optional[Box]:
     """The part's axis-aligned bounding box in world coordinates.
 
     Rotation is applied, so a tilted part's box is the box of the tilted
     geometry rather than of its untilted size — which is the difference between
     a useful adjacency measurement and a misleading one.
     """
-    mesh = _mesh_for(part)
+    mesh = _mesh_for(part, placement)
     if mesh is None or not mesh.positions:
         return None
-    rot = part.get("rotation") or {}
-    quat = glb._euler_to_quat(
-        float(rot.get("x", 0.0)), float(rot.get("y", 0.0)), float(rot.get("z", 0.0))
-    )
-    pos = part.get("position") or {}
-    ox = float(pos.get("x", 0.0))
-    oy = float(pos.get("y", 0.0))
-    oz = float(pos.get("z", 0.0))
-
     lo = [math.inf] * 3
     hi = [-math.inf] * 3
-    for point in mesh.positions:
-        rx, ry, rz = _rotate(point, quat)
-        for i, v in enumerate((rx + ox, ry + oy, rz + oz)):
+    # THE SAME world-transform helper the renderer and the planar projection
+    # use. This module used to carry its own copy of the rotate; a second copy
+    # of the placement maths is the mistake that made every curved part half
+    # its intended size.
+    for point in glb.world_positions(mesh):
+        for i, v in enumerate(point):
             lo[i] = min(lo[i], v)
             hi[i] = max(hi[i], v)
     return ((lo[0], lo[1], lo[2]), (hi[0], hi[1], hi[2]))
@@ -126,9 +126,30 @@ def report(manifest: Dict[str, Any],
     Returns counts and the pairs, so a report can name which joints are gaps
     rather than only quoting a fraction.
     """
-    parts = [p for p in (manifest.get("parts") or []) if isinstance(p, dict)]
-    boxes = [(p.get("name") or f"part{i}", aabb(p)) for i, p in enumerate(parts)]
-    boxes = [(n, b) for n, b in boxes if b is not None]
+    boxes = []
+    try:
+        # EXPANDED FIRST, so a v2 manifest is measured on the parts that are
+        # actually drawn. Measuring `parts` directly would see a `ref` as an
+        # entry with no shape, skip it, and report a rate computed over the
+        # handful of leaves that happened to be written inline.
+        from lib import manifest as mf
+
+        placements = mf.expand(manifest)
+    except Exception:                                     # noqa: BLE001
+        placements = None
+
+    if placements is not None:
+        for i, placement in enumerate(placements):
+            box = aabb(placement["style"], placement)
+            if box is not None:
+                boxes.append((placement.get("name") or f"part{i}", box))
+    else:
+        # An unvalidated scene straight from a model: measured as written.
+        parts = [p for p in (manifest.get("parts") or []) if isinstance(p, dict)]
+        for i, part in enumerate(parts):
+            box = aabb(part)
+            if box is not None:
+                boxes.append((part.get("name") or f"part{i}", box))
 
     overlaps: List[Tuple[str, str, float]] = []
     gaps: List[Tuple[str, str, float]] = []

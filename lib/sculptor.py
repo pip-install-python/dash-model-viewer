@@ -423,46 +423,93 @@ def build(scene: Dict[str, Any],
         notes.append(f"kept the first {MAX_PARTS} of {len(parts)} parts")
         parts = parts[:MAX_PARTS]
 
+    return build_placements(
+        [
+            {
+                "style": part,
+                "position": (
+                    _clamp((part.get("position") or {}).get("x"),
+                           -MAX_SCENE_RADIUS, MAX_SCENE_RADIUS, 0.0),
+                    _clamp((part.get("position") or {}).get("y"),
+                           -MAX_SCENE_RADIUS, MAX_SCENE_RADIUS, 0.0),
+                    _clamp((part.get("position") or {}).get("z"),
+                           -MAX_SCENE_RADIUS, MAX_SCENE_RADIUS, 0.0),
+                ),
+                "quat": glb._euler_to_quat(
+                    _clamp((part.get("rotation") or {}).get("x"), -360, 360, 0.0),
+                    _clamp((part.get("rotation") or {}).get("y"), -360, 360, 0.0),
+                    _clamp((part.get("rotation") or {}).get("z"), -360, 360, 0.0),
+                ),
+                "share": None,
+                "name": part.get("name") or f"part{i}",
+            }
+            for i, part in enumerate(parts)
+        ],
+        texture_png=texture_png,
+        notes=notes,
+    )
+
+
+def build_placements(placements: List[Dict[str, Any]],
+                     texture_png: Optional[bytes] = None,
+                     notes: Optional[List[str]] = None
+                     ) -> Tuple[bytes, List[str], int]:
+    """Draw already-placed leaves. The one implementation both paths reach.
+
+    `build()` hands it a flat scene straight from a model, where the values are
+    untrusted and get clamped on the way in; `manifest.expand()` hands it the
+    leaves of a nested manifest, already validated and with every transform
+    composed. Keeping ONE builder is what makes "a nested manifest and the
+    same sculpture written flat put every node in the same place" a fact about
+    the code rather than a coincidence between two copies of it.
+
+    A `share` key means "this came from a def": all placements carrying the
+    same key get ONE material and ONE mesh, which is where instancing pays.
+    """
+    notes = notes if notes is not None else []
+    if len(placements) > MAX_PARTS:
+        notes.append(f"kept the first {MAX_PARTS} of {len(placements)} parts")
+        placements = placements[:MAX_PARTS]
+
     builder = glb.GLBBuilder()
     built: List[glb.Mesh] = []
+    shared_materials: Dict[str, glb.Material] = {}
     used = 0
-    for i, part in enumerate(parts):
+    for i, placement in enumerate(placements):
+        part = placement["style"]
         shape = str(part.get("shape", "")).lower()
         if shape not in SHAPES:
             notes.append(f"dropped part {i} — unknown shape {shape!r}")
             continue
 
         size = part.get("size") or {}
-        pos = part.get("position") or {}
-        rot = part.get("rotation") or {}
-
         w = _clamp(size.get("x"), 0.01, MAX_EXTENT, 0.5)
         h = _clamp(size.get("y"), 0.01, MAX_EXTENT, 0.5)
         d = _clamp(size.get("z"), 0.01, MAX_EXTENT, 0.5)
 
-        px = _clamp(pos.get("x"), -MAX_SCENE_RADIUS, MAX_SCENE_RADIUS, 0.0)
-        py = _clamp(pos.get("y"), -MAX_SCENE_RADIUS, MAX_SCENE_RADIUS, 0.0)
-        pz = _clamp(pos.get("z"), -MAX_SCENE_RADIUS, MAX_SCENE_RADIUS, 0.0)
-
-        emissive_strength = _clamp(part.get("emissive_strength"), 0.0, 1.0, 0.0)
-        colour = _colour(part.get("color", ""))
-        material = glb.Material(
-            base_color=colour,
-            metallic=_clamp(part.get("metallic"), 0.0, 1.0, 0.0),
-            roughness=_clamp(part.get("roughness"), 0.05, 1.0, 0.8),
-            emissive=tuple(c * emissive_strength for c in colour),
-            name=str(part.get("name") or f"part{i}")[:48],
-        )
+        share = placement.get("share")
+        name = str(placement.get("name") or f"part{i}")[:48]
+        if share is not None and share in shared_materials:
+            material = shared_materials[share]
+        else:
+            emissive_strength = _clamp(part.get("emissive_strength"), 0.0, 1.0, 0.0)
+            colour = _colour(part.get("color", ""))
+            material = glb.Material(
+                base_color=colour,
+                metallic=_clamp(part.get("metallic"), 0.0, 1.0, 0.0),
+                roughness=_clamp(part.get("roughness"), 0.05, 1.0, 0.8),
+                emissive=tuple(c * emissive_strength for c in colour),
+                name=name,
+            )
+            if share is not None:
+                shared_materials[share] = material
 
         kw = dict(
             material=material,
-            translation=(px, py, pz),
-            rotation_euler=(
-                _clamp(rot.get("x"), -360, 360, 0.0),
-                _clamp(rot.get("y"), -360, 360, 0.0),
-                _clamp(rot.get("z"), -360, 360, 0.0),
-            ),
-            name=material.name,
+            translation=tuple(placement["position"]),
+            rotation_quat=placement["quat"],
+            name=name,
+            share_key=share,
         )
 
         if shape == "box":

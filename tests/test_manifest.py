@@ -19,7 +19,8 @@ from lib.glb import _euler_to_quat
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SAMPLES = REPO / "docs" / "scene-manifest" / "samples"
-SAMPLE_FILES = ["lighthouse.json", "colonnade.json", "brazier.json"]
+SAMPLE_FILES = ["lighthouse.json", "colonnade.json", "brazier.json",
+                "cart.json", "cart-flat.json"]
 FIXTURE = SAMPLES / "INVALID-fixture.json"
 
 
@@ -59,7 +60,10 @@ def test_there_are_samples_to_test():
 def test_every_sample_validates_and_renders(name):
     m = manifest.loads((SAMPLES / name).read_text(encoding="utf-8"))
     data, _notes, used = manifest.render(m)
-    assert used == len(m["parts"])
+    # LEAVES, not top-level entries: in v2 one `ref` to a four-part assembly
+    # is four parts drawn, and comparing against `len(m["parts"])` would make
+    # a nested sample look like it had lost pieces.
+    assert used == len(manifest.expand(m))
     assert data[:4] == b"glTF", "output is not a GLB"
 
 
@@ -179,12 +183,23 @@ def test_unknown_or_wrong_provenance_is_refused(bad, expect):
 
 
 def test_an_unknown_version_is_refused_and_not_partially_read():
-    """Pairs with test_the_page_says_an_unknown_version_is_not_partially_read."""
+    """Pairs with test_the_page_says_an_unknown_version_is_not_partially_read.
+
+    The example is version 3 now that 2 is read. The property is unchanged and
+    is the reason the number exists: a manifest from a build that knows more
+    than this one is refused whole, never read for the parts it recognises.
+    """
     with pytest.raises(manifest.ManifestError) as exc:
-        manifest.validate({"version": 2, "parts": []})
+        manifest.validate({"version": 3, "parts": []})
     message = str(exc.value)
-    assert "version 2" in message and "version 1" in message
+    assert "version 3" in message and "version 1 and 2" in message
     assert "not read partially" in message
+
+
+def test_version_2_is_read_and_version_1_is_still_read():
+    assert manifest.READS == (1, 2)
+    assert manifest.VERSION == 2, "the highest this build understands"
+    assert manifest.FLAT_VERSION == 1, "what a flat scene is stamped with"
 
 
 def test_a_missing_version_is_refused():

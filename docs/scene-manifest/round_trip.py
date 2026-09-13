@@ -15,6 +15,8 @@ SAMPLE_FILES = {
     "Lighthouse (2 parts)": "lighthouse.json",
     "Colonnade (28 parts — the limit)": "colonnade.json",
     "Brazier (emissive)": "brazier.json",
+    "Cart (v2 — a wheel placed four times)": "cart.json",
+    "Cart, written flat (v1 — the same sculpture)": "cart-flat.json",
 }
 FIXTURE = "INVALID-fixture.json"
 

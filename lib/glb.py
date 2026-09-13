@@ -89,6 +89,8 @@ class Mesh:
         rotation_euler: Vec3 = (0.0, 0.0, 0.0),
         scale: Vec3 = (1.0, 1.0, 1.0),
         name: str = "mesh",
+        rotation_quat: Optional[Sequence[float]] = None,
+        share_key: Optional[str] = None,
     ):
         self.positions = positions
         self.indices = indices
@@ -97,6 +99,14 @@ class Mesh:
         self.material = material or Material()
         self.translation = tuple(float(v) for v in translation)
         self.rotation_euler = tuple(float(v) for v in rotation_euler)
+        #: Set when a nested manifest was expanded: the composed rotation, kept
+        #: as a quaternion so no lossy conversion back to Euler happens.
+        self.rotation_quat = list(rotation_quat) if rotation_quat else None
+        #: Meshes carrying the same key are written ONCE and pointed at by
+        #: several nodes — glTF instancing. Set by the expander for anything
+        #: reached through a `ref`, and left None otherwise, so sharing stays
+        #: opt-in and a hand-written manifest renders exactly as it reads.
+        self.share_key = share_key
         self.scale = tuple(float(v) for v in scale)
         self.name = name
 
@@ -137,6 +147,58 @@ def _euler_to_quat(rx: float, ry: float, rz: float) -> List[float]:
     ]
 
 
+def rotate_vector(point: Sequence[float], quat: Sequence[float]) -> Vec3:
+    """Rotate a point by a quaternion (x, y, z, w).
+
+    ONE implementation, used by the builder, by the planar projection and by
+    the interpenetration metric. A second copy of the placement maths is the
+    same class of mistake as a second copy of the size rules, and that one made
+    every curved part half its intended size.
+    """
+    x, y, z = (float(v) for v in point)
+    qx, qy, qz, qw = (float(v) for v in quat)
+    ax = 2.0 * (qy * z - qz * y)
+    ay = 2.0 * (qz * x - qx * z)
+    az = 2.0 * (qx * y - qy * x)
+    return (
+        x + qw * ax + (qy * az - qz * ay),
+        y + qw * ay + (qz * ax - qx * az),
+        z + qw * az + (qx * ay - qy * ax),
+    )
+
+
+def quat_multiply(outer: Sequence[float], inner: Sequence[float]) -> List[float]:
+    """Compose two rotations: the result applies `inner` first, then `outer`.
+
+    This is what a nested group needs — a child's own rotation happens inside
+    its parent's. Composing as quaternions rather than by adding Euler angles
+    is not a preference: Euler angles do not add, and a group rotated about Y
+    holding a part rotated about X is the ordinary case where adding them gives
+    the wrong sculpture.
+    """
+    bx, by, bz, bw = (float(v) for v in outer)
+    ax, ay, az, aw = (float(v) for v in inner)
+    return [
+        bw * ax + bx * aw + by * az - bz * ay,
+        bw * ay - bx * az + by * aw + bz * ax,
+        bw * az + bx * ay - by * ax + bz * aw,
+        bw * aw - bx * ax - by * ay - bz * az,
+    ]
+
+
+def mesh_quat(mesh: "Mesh") -> List[float]:
+    """The mesh's rotation as a quaternion, however it was specified.
+
+    A mesh placed by hand carries Euler degrees; one produced by expanding a
+    nested manifest carries a composed quaternion, because composing rotations
+    and then converting back to Euler is a lossy round trip that has no reason
+    to happen.
+    """
+    if getattr(mesh, "rotation_quat", None) is not None:
+        return list(mesh.rotation_quat)
+    return _euler_to_quat(*mesh.rotation_euler)
+
+
 def world_positions(mesh: "Mesh") -> List[Vec3]:
     """The mesh's vertices where the scene actually puts them.
 
@@ -147,21 +209,13 @@ def world_positions(mesh: "Mesh") -> List[Vec3]:
     placement maths is the same mistake as a second copy of the size rules, and
     that one made every curved part half its intended size.
     """
-    qx, qy, qz, qw = _euler_to_quat(*mesh.rotation_euler)
+    quat = mesh_quat(mesh)
     sx, sy, sz = mesh.scale
     tx, ty, tz = mesh.translation
     out: List[Vec3] = []
     for px, py, pz in mesh.positions:
-        x, y, z = px * sx, py * sy, pz * sz
-        # v + 2q_w(q_v x v) + 2q_v x (q_v x v)
-        ax = 2.0 * (qy * z - qz * y)
-        ay = 2.0 * (qz * x - qx * z)
-        az = 2.0 * (qx * y - qy * x)
-        out.append((
-            x + qw * ax + (qy * az - qz * ay) + tx,
-            y + qw * ay + (qz * ax - qx * az) + ty,
-            z + qw * az + (qx * ay - qy * ax) + tz,
-        ))
+        rx, ry, rz = rotate_vector((px * sx, py * sy, pz * sz), quat)
+        out.append((rx + tx, ry + ty, rz + tz))
     return out
 
 
@@ -170,6 +224,27 @@ class GLBBuilder:
 
     def __init__(self) -> None:
         self._meshes: List[Mesh] = []
+
+    @staticmethod
+    def _append_node(nodes: List[Dict], mesh: Mesh, mesh_idx: int) -> None:
+        """One place that turns a mesh's placement into a glTF node.
+
+        Extracted because a shared mesh and a freshly written one must produce
+        IDENTICAL node records — that equality is the acceptance test for
+        instancing, and two copies of this would be two chances to break it.
+        """
+        node: Dict = {"mesh": mesh_idx, "name": mesh.name}
+        if mesh.translation != (0.0, 0.0, 0.0):
+            node["translation"] = list(mesh.translation)
+        rotation = mesh_quat(mesh)
+        # Compared against identity rather than against the Euler triple: a
+        # composed rotation arrives as a quaternion with no Euler angles set,
+        # and testing the triple would silently drop every nested rotation.
+        if rotation != [0.0, 0.0, 0.0, 1.0]:
+            node["rotation"] = rotation
+        if mesh.scale != (1.0, 1.0, 1.0):
+            node["scale"] = list(mesh.scale)
+        nodes.append(node)
 
     def add(self, mesh: Mesh) -> "GLBBuilder":
         self._meshes.append(mesh)
@@ -256,7 +331,14 @@ class GLBBuilder:
             materials.append(entry)
             material_index[key] = len(materials) - 1
 
+        mesh_index: Dict[str, int] = {}
         for mesh in self._meshes:
+            if mesh.share_key is not None and mesh.share_key in mesh_index:
+                # Already written by an earlier placement of the same def: this
+                # node points at it. That is where instancing actually pays —
+                # four wheels become four nodes and one lump of geometry.
+                self._append_node(nodes, mesh, mesh_index[mesh.share_key])
+                continue
             pos_bytes = b"".join(struct.pack("<3f", *p) for p in mesh.positions)
             nrm_bytes = b"".join(struct.pack("<3f", *n) for n in mesh.normals)
             idx_bytes = b"".join(struct.pack("<I", i) for i in mesh.indices)
@@ -291,14 +373,9 @@ class GLBBuilder:
                     "material": material_index[id(mesh.material)],
                 }],
             })
-            node: Dict = {"mesh": len(meshes) - 1, "name": mesh.name}
-            if mesh.translation != (0.0, 0.0, 0.0):
-                node["translation"] = list(mesh.translation)
-            if mesh.rotation_euler != (0.0, 0.0, 0.0):
-                node["rotation"] = _euler_to_quat(*mesh.rotation_euler)
-            if mesh.scale != (1.0, 1.0, 1.0):
-                node["scale"] = list(mesh.scale)
-            nodes.append(node)
+            if mesh.share_key is not None:
+                mesh_index[mesh.share_key] = len(meshes) - 1
+            self._append_node(nodes, mesh, len(meshes) - 1)
 
         gltf: Dict = {
             "asset": {"version": "2.0", "generator": "dash-model-viewer/lib.glb"},

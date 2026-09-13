@@ -95,6 +95,25 @@ at the end of this entry.
 
 ### Added
 
+- **Scene manifest version 2 — define a thing once and place it.** Three
+  additive entries: a `defs` block naming sub-assemblies, a `ref` that places
+  one, and a `group` that gathers parts under a shared transform. Nesting is
+  allowed to four levels; the 28-part ceiling now counts LEAVES after
+  expansion, because a `ref` costs its def's part count every time it is
+  placed. A def deliberately has no `position` — it describes a thing, a `ref`
+  says where a copy goes — so a ref cannot restyle or resize what it places and
+  every placement provably shares **one mesh and one material**. The bundled
+  `cart.json` draws 8 parts from 4 entries in 4 meshes and is **69% smaller**
+  than `cart-flat.json`, the same sculpture placed by hand; a test asserts the
+  two put every node in exactly the same position and rotation. Rotations
+  compose as quaternions rather than by adding Euler angles, which do not add.
+  **Version 1 is unaffected**, asserted by SHA-256 on the three original
+  samples. The exported `.glb` remains a flat scene — shared meshes, one node
+  per part — so the two shipped readers that assume a mesh's transform is its
+  world transform (`lib/overlap.py`, `lib/texture.py`) keep working; a test
+  asserts neither can tell the nested cart from the flat one. Making the
+  authored grouping survive export is a later, separate change.
+
 - **[Model Upload](/model-upload) — render your own `.glb`.** Every other page
   hands `<model-viewer>` a model this site chose; this one takes a `dcc.Upload`
   and renders the visitor's file, beside a readout of what is actually in it:

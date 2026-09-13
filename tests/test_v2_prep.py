@@ -13,7 +13,7 @@ import pathlib
 
 import pytest
 
-from lib import sculptor
+from lib import manifest, sculptor
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PROMPTS = REPO / "docs" / "benchmark" / "prompts.json"
@@ -32,18 +32,56 @@ def test_the_v2_caps_are_named_constants():
     assert sculptor.MAX_PARTS == 28
 
 
-def test_the_caps_are_still_inert():
-    """Prep, not build. If something starts importing these before G1, this
-    test is the place that says so out loud."""
+def test_the_caps_are_now_ENFORCED_not_merely_declared():
+    """This test used to assert the opposite.
+
+    While the caps were prep, it asserted nothing imported them — so that
+    building against them early would be noticed. G1 has landed, so the useful
+    question inverted: are they actually enforced, or still just documented?
+    A declared limit nobody checks is the defect class 1.0.0 spent its review
+    removing.
+    """
     import subprocess
 
     out = subprocess.run(
         ["git", "grep", "-l", "MAX_DEPTH\\|MAX_DEFS", "--", "*.py"],
         capture_output=True, text=True, cwd=REPO,
     ).stdout.split()
-    assert out == ["lib/sculptor.py"] or set(out) <= {
-        "lib/sculptor.py", "tests/test_v2_prep.py"
-    }, f"the v2 caps are in use before G1: {out}"
+    assert "lib/manifest.py" in out, (
+        "the validator does not mention the caps — they are documentation, "
+        "not limits"
+    )
+
+    deep = {"version": 2, "defs": {}, "parts": []}
+    node = deep["parts"]
+    for _ in range(sculptor.MAX_DEPTH + 1):
+        child = []
+        node.append({"group": "g", "position": {"x": 0, "y": 0, "z": 0},
+                     "children": child})
+        node = child
+    node.append({"name": "p", "shape": "box",
+                 "size": {"x": 0.2, "y": 0.2, "z": 0.2},
+                 "position": {"x": 0, "y": 0, "z": 0},
+                 "rotation": {"x": 0, "y": 0, "z": 0},
+                 "color": "#888888", "metallic": 0.0,
+                 "roughness": 0.8, "emissive_strength": 0.0})
+    with pytest.raises(manifest.ManifestError, match="nest more than"):
+        manifest.validate(deep)
+
+    too_many = {
+        "version": 2,
+        "defs": {f"d{i}": {"children": [{"name": "p", "shape": "box",
+                                         "size": {"x": 0.2, "y": 0.2, "z": 0.2},
+                                         "position": {"x": 0, "y": 0, "z": 0},
+                                         "rotation": {"x": 0, "y": 0, "z": 0},
+                                         "color": "#888888", "metallic": 0.0,
+                                         "roughness": 0.8,
+                                         "emissive_strength": 0.0}]}
+                 for i in range(sculptor.MAX_DEFS + 1)},
+        "parts": [{"ref": "d0", "position": {"x": 0, "y": 0, "z": 0}}],
+    }
+    with pytest.raises(manifest.ManifestError, match="the limit is"):
+        manifest.validate(too_many)
 
 
 # --------------------------------------------------------------------------

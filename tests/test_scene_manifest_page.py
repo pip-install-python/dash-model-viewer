@@ -132,9 +132,15 @@ def test_provenance_is_documented_as_never_read(prose):
     assert "renderer never needs the prompt" in prose.lower()
 
 
-def test_the_page_commits_to_version_1_not_changing_meaning(prose):
-    assert "version 1 will not change meaning" in prose.lower()
-    assert "version 2" in prose.lower(), "the additive plan is not stated"
+def test_the_page_shows_the_version_1_promise_was_KEPT(prose):
+    """This used to assert the PROMISE ("version 1 will not change meaning").
+    Version 2 has landed, so the stronger claim is available and the page makes
+    it: version 1 did not change, and `tests/test_manifest_v2.py` holds the
+    three samples to their SHA-256. A promise is worth less than a measurement
+    once the measurement can be taken."""
+    assert "version 1 did not change meaning" in prose.lower()
+    assert "version 2" in prose.lower()
+    assert "byte-for-byte" in prose.lower(), "the evidence is not cited"
 
 
 # --------------------------------------------------------------------------

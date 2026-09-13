@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "name": "Cart (written flat)",
+  "notes": "The same sculpture as cart.json with every part placed by hand. It exists to be COMPARED: the two must put every node in the same place, and only the ref version shares meshes. Hand-maintained on purpose \u2014 if the two drift, the comparison test is what says so.",
+  "parts": [
+    {
+      "color": "#6B4E32",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "bed",
+      "position": {
+        "x": 0,
+        "y": 0.46,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.9,
+      "shape": "box",
+      "size": {
+        "x": 1.1,
+        "y": 0.12,
+        "z": 0.62
+      }
+    },
+    {
+      "color": "#3B2F2A",
+      "emissive_strength": 0.0,
+      "metallic": 0.1,
+      "name": "wheel",
+      "position": {
+        "x": -0.42,
+        "y": 0.25,
+        "z": -0.26
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.85,
+      "shape": "torus",
+      "size": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.12
+      }
+    },
+    {
+      "color": "#3B2F2A",
+      "emissive_strength": 0.0,
+      "metallic": 0.1,
+      "name": "wheel",
+      "position": {
+        "x": -0.42,
+        "y": 0.25,
+        "z": 0.26
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.85,
+      "shape": "torus",
+      "size": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.12
+      }
+    },
+    {
+      "color": "#4A4A4A",
+      "emissive_strength": 0.0,
+      "metallic": 0.6,
+      "name": "axle",
+      "position": {
+        "x": -0.42,
+        "y": 0.25,
+        "z": 0
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.5,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.06,
+        "y": 0.52,
+        "z": 0.06
+      }
+    },
+    {
+      "color": "#3B2F2A",
+      "emissive_strength": 0.0,
+      "metallic": 0.1,
+      "name": "wheel",
+      "position": {
+        "x": 0.42,
+        "y": 0.25,
+        "z": -0.26
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.85,
+      "shape": "torus",
+      "size": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.12
+      }
+    },
+    {
+      "color": "#3B2F2A",
+      "emissive_strength": 0.0,
+      "metallic": 0.1,
+      "name": "wheel",
+      "position": {
+        "x": 0.42,
+        "y": 0.25,
+        "z": 0.26
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.85,
+      "shape": "torus",
+      "size": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.12
+      }
+    },
+    {
+      "color": "#4A4A4A",
+      "emissive_strength": 0.0,
+      "metallic": 0.6,
+      "name": "axle",
+      "position": {
+        "x": 0.42,
+        "y": 0.25,
+        "z": 0
+      },
+      "rotation": {
+        "x": 90,
+        "y": 0,
+        "z": 0
+      },
+      "roughness": 0.5,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.06,
+        "y": 0.52,
+        "z": 0.06
+      }
+    },
+    {
+      "color": "#6B4E32",
+      "emissive_strength": 0.0,
+      "metallic": 0.0,
+      "name": "handle",
+      "position": {
+        "x": 0.72,
+        "y": 0.62,
+        "z": 0
+      },
+      "rotation": {
+        "x": 0,
+        "y": 0,
+        "z": 60
+      },
+      "roughness": 0.9,
+      "shape": "cylinder",
+      "size": {
+        "x": 0.06,
+        "y": 0.5,
+        "z": 0.06
+      }
+    }
+  ]
+}
