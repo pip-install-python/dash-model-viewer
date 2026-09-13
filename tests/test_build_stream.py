@@ -338,13 +338,21 @@ def test_a_run_belongs_to_the_tab_that_started_it():
     assert len(mine) == 32 and mine != theirs, "ids are distinct uuids"
 
 
-def test_poll_without_a_run_id_does_nothing():
-    """Asserted as "every output is no_update", not as a literal width — the
-    tuple grew from 11 to 14 when the manifest store and its two buttons were
-    added, and a hardcoded count makes that a test failure rather than a
-    widening."""
+def test_poll_without_a_run_id_changes_nothing_but_the_liveness_tick():
+    """Asserted by KIND, not by a literal width — the tuple grew from 11 to 14
+    when the manifest store and its two buttons were added, and again for the
+    liveness store, and a hardcoded count makes a widening look like a failure.
+
+    The one non-`no_update` output is deliberate: `-alive` records that the
+    SERVER ANSWERED, not that something changed. If the idle path left it
+    alone, the stale guard would fire during any build whose first model call
+    outran five ticks — i.e. during most real builds.
+    """
     from dash import no_update
 
     page = _page()
     out = page.poll(1, None, "x", "claude-opus-5")
-    assert out and all(v is no_update for v in out)
+    assert out
+    ticks = [v for v in out if not isinstance(v, type(no_update))]
+    assert ticks == [{"tick": 1}], f"expected one liveness tick, got {ticks}"
+    assert sum(1 for v in out if v is no_update) == len(out) - 1

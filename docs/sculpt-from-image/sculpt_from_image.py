@@ -6,7 +6,8 @@ from dash import Input, Output, State, callback, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import build_stream, manifest, model_picker, sculptor, spend, uploads
+from lib import (build_stream, manifest, model_picker, poll_guard, sculptor,
+                 spend, uploads)
 
 #: 4 MB, the same cap /texture-upload states, from the same module. A vision
 #: model resizes anything larger anyway, so a bigger allowance would buy a
@@ -26,7 +27,9 @@ component = html.Div(
         dcc.Store(id="si-manifest"),
         dcc.Download(id="si-dl-json"),
         dcc.Download(id="si-dl-glb"),
-        dcc.Interval(id="si-poll", interval=700, disabled=True),
+        # The bounded timer and its liveness store. Capped and stale-guarded
+        # in one place — see lib/poll_guard.py for the 500-loop it ends.
+        *poll_guard.components("si"),
         dmc.Group(
             model_picker.components("si", sculptor.MODEL, w=260),
             mb="xs",
@@ -145,6 +148,8 @@ def accept_image(contents, filename):
     Output("si-status", "hide"),
     Output("si-working", "display"),
     Output("si-go", "loading"),
+    Output("si-poll", "n_intervals"),
+    Output("si-alive", "data"),
     Input("si-go", "n_clicks"),
     State("si-image", "data"),
     State("si-hint", "value"),
@@ -153,7 +158,7 @@ def accept_image(contents, filename):
 )
 def start(_, image, hint, model):
     if not image:
-        return no_update, no_update, no_update, no_update, no_update
+        return (no_update,) * 7
     run_id = build_stream.new_run()
     threading.Thread(
         target=sculptor.sculpt_image_streaming,
@@ -161,7 +166,10 @@ def start(_, image, hint, model):
         kwargs={"model": model or sculptor.MODEL},
         daemon=True,
     ).start()
-    return run_id, False, True, "block", True
+    # n_intervals back to 0 re-arms the capped Interval (the gate is
+    # `n_intervals >= max_intervals`, re-evaluated on update), so the ceiling
+    # bounds THIS build rather than the tab's whole lifetime.
+    return run_id, False, True, "block", True, 0, poll_guard.tick_value(0)
 
 
 @callback(
@@ -178,15 +186,23 @@ def start(_, image, hint, model):
     Output("si-manifest", "data"),
     Output("si-save-json", "disabled"),
     Output("si-save-glb", "disabled"),
+    Output("si-alive", "data", allow_duplicate=True),
     Input("si-poll", "n_intervals"),
     State("si-run", "data"),
     State("si-model", "value"),
     State("si-hint", "value"),
     prevent_initial_call=True,
 )
-def poll(_, run_id, model, hint):
-    """Same seam, same collector as /generative-3d — see lib/build_stream.py."""
-    idle = (no_update,) * 13
+def poll(tick, run_id, model, hint):
+    """Same seam, same collector as /generative-3d — see lib/build_stream.py.
+
+    EVERY return path advances `si-alive`, including the ones that report no
+    progress: it records that the SERVER ANSWERED, not that something
+    changed. A store advanced only when a part arrives would trip the stale
+    guard during any build whose first model call runs long.
+    """
+    alive = poll_guard.tick_value(tick)
+    idle = (no_update,) * 13 + (alive,)
     if not run_id:
         return idle
 
@@ -228,7 +244,7 @@ def poll(_, run_id, model, hint):
                 "model": model,
                 "usd": final.get("usd", 0.0),
                 "generated": date.today().isoformat(),
-            }), False, False,
+            }), False, False, alive,
         )
 
     if state["done"]:
@@ -237,13 +253,13 @@ def poll(_, run_id, model, hint):
             state["reason"] or "The sculpt did not complete.",
             "yellow", False, no_update,
             "", True, "none", False,
-            no_update, no_update, no_update,
+            no_update, no_update, no_update, alive,
         )
 
     return (
         latest_src, no_update, no_update, no_update, no_update, no_update,
         progress, no_update, no_update, no_update,
-        no_update, no_update, no_update,
+        no_update, no_update, no_update, alive,
     )
 
 
@@ -258,6 +274,10 @@ def show_estimate(model):
 
 
 model_picker.register("si", action_ids=["si-go"])
+poll_guard.register("si", "si-status", resets=[
+    ("si-working", "display", "none"),
+    ("si-go", "loading", False),
+])
 
 
 @callback(

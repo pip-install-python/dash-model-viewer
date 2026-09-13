@@ -19,6 +19,35 @@ at the end of this entry.
 
 ### Fixed
 
+- **A stale tab no longer polls a 500 for ever.** Observed on this host: a tab
+  left open on `/sculpt-from-image` across a restart posted a callback id the
+  running server no longer had, and Dash answered `500` to every tick — at
+  700 ms, indefinitely, behind a spinner that never stopped. It read as a hung
+  build. The cause was benign (the tab predated the commit that widened that
+  callback's output list, and Dash's callback id hashes only the INPUTS, so its
+  `@hash` matched while the output list did not); the consequence was not,
+  because every deploy that changes a callback's outputs puts every open tab in
+  that state. Both generating pages now bound the timer with `max_intervals`,
+  derived from the progress store's TTL rather than chosen, and carry a
+  CLIENTSIDE stale guard — the server writes the tick it last answered on, and
+  the browser says "This page is out of date — reload it" and stops the timer
+  after five ticks of silence. Clientside because it has to run in exactly the
+  state where server callbacks cannot. It cannot rescue a tab older than
+  itself; what it prevents is the next deploy doing it again. New in
+  `lib/poll_guard.py`.
+
+- **`/generative-3d` recorded the wrong provenance in every file it exported.**
+  Its poll declared `State("g3-model")` then `State("g3-prompt")` and received
+  them transposed, so each saved manifest carried the model id under `prompt`
+  and the prompt text under `model`. The sculpture was unaffected; only the
+  record of how it was made was wrong — the half a file keeps after the session
+  is gone. The suite missed it because the tests called the function in ITS
+  parameter order rather than through the wiring, which cancelled the
+  transposition out. `tests/test_callback_wiring.py` now compares every
+  callback's parameter order against the order Dash wires into it, and flags a
+  parameter that matches a DIFFERENT dependency of the same callback — a rule
+  that fires on one of this app's 43 callbacks and fired on this bug.
+
 - **WebXR AR now works out of the box on Android.** `arModes` defaulted to
   `"basic_annotations scene-viewer quick-look"`. `basic_annotations` is not an
   AR mode — it is the name of a folder in `usage_tests/`, copy-pasted into the

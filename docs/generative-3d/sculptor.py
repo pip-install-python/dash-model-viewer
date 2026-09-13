@@ -6,7 +6,8 @@ from dash import ALL, Input, Output, State, callback, ctx, dcc, html, no_update
 import dash_mantine_components as dmc
 
 import dash_model_viewer as dmv
-from lib import build_stream, manifest, model_picker, sculptor, spend
+from lib import (build_stream, manifest, model_picker, poll_guard, sculptor,
+                 spend)
 
 IDEAS = [
     "a brutalist lighthouse at dusk, weathered concrete and one warm light",
@@ -38,7 +39,7 @@ component = html.Div(
         dcc.Store(id="g3-manifest"),
         dcc.Download(id="g3-dl-json"),
         dcc.Download(id="g3-dl-glb"),
-        dcc.Interval(id="g3-poll", interval=700, disabled=True),
+        *poll_guard.components("g3"),
         dmc.Group(
             model_picker.components("g3", sculptor.MODEL, w=260),
             mb="xs",
@@ -156,6 +157,8 @@ def use_idea(clicks):
     Output("g3-working", "display"),
     Output("g3-go", "loading"),
     Output("g3-prompt", "disabled"),
+    Output("g3-poll", "n_intervals"),
+    Output("g3-alive", "data"),
     Input("g3-go", "n_clicks"),
     State("g3-prompt", "value"),
     State("g3-model", "value"),
@@ -180,7 +183,9 @@ def start_sculpt(_, prompt, model):
         kwargs={"model": model or sculptor.MODEL},
         daemon=True,
     ).start()
-    return run_id, False, True, "block", True, True
+    # n_intervals back to 0 re-arms the capped Interval, so the ceiling
+    # bounds THIS build rather than the tab's whole lifetime.
+    return run_id, False, True, "block", True, True, 0, poll_guard.tick_value(0)
 
 
 @callback(
@@ -198,13 +203,14 @@ def start_sculpt(_, prompt, model):
     Output("g3-manifest", "data"),
     Output("g3-save-json", "disabled"),
     Output("g3-save-glb", "disabled"),
+    Output("g3-alive", "data", allow_duplicate=True),
     Input("g3-poll", "n_intervals"),
     State("g3-run", "data"),
     State("g3-model", "value"),
     State("g3-prompt", "value"),
     prevent_initial_call=True,
 )
-def poll(_, run_id, prompt, model):
+def poll(tick, run_id, model, prompt):
     """Drain the seam and render whatever has arrived.
 
     Every `part` event carries a COMPLETE `.glb` of the parts so far, so the
@@ -213,8 +219,16 @@ def poll(_, run_id, prompt, model):
 
     The Interval stops the moment the run ends — on the `done` event, or on a
     `done` flag with no event, which is how a failed build reports itself.
+
+    The parameter ORDER follows the State order above — `g3-model` then
+    `g3-prompt`. It did not: the two were transposed, so the provenance
+    written into every exported manifest had the model id under "prompt"
+    and the prompt text under "model". The suite missed it because the
+    tests call this function directly, in ITS order, never through the
+    wiring — `tests/test_callback_wiring.py` now compares the two.
     """
-    idle = (no_update,) * 14
+    alive = poll_guard.tick_value(tick)
+    idle = (no_update,) * 14 + (alive,)
     if not run_id:
         return idle
 
@@ -257,7 +271,7 @@ def poll(_, run_id, prompt, model):
                 "prompt": prompt, "model": model,
                 "usd": final.get("usd", 0.0),
                 "generated": date.today().isoformat(),
-            }), False, False,
+            }), False, False, alive,
         )
 
     if state["done"]:
@@ -266,17 +280,22 @@ def poll(_, run_id, prompt, model):
             state["reason"] or "The sculpt did not complete.",
             "yellow", False, no_update,
             "", True, "none", False, False,
-            no_update, no_update, no_update,
+            no_update, no_update, no_update, alive,
         )
 
     return (
         latest_src, no_update, no_update, no_update, no_update, no_update,
         progress, no_update, no_update, no_update, no_update,
-        no_update, no_update, no_update,
+        no_update, no_update, no_update, alive,
     )
 
 
 model_picker.register("g3", action_ids=["g3-go"])
+poll_guard.register("g3", "g3-status", resets=[
+    ("g3-working", "display", "none"),
+    ("g3-go", "loading", False),
+    ("g3-prompt", "disabled", False),
+])
 
 
 @callback(

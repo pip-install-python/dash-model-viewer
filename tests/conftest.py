@@ -289,3 +289,46 @@ def main_body(html: str) -> str:
     if "<main>" not in html:
         return ""
     return html.split("<main>", 1)[1].split("</main>", 1)[0]
+
+
+def in_fresh_app(script: str, timeout: int = 300) -> object:
+    """Run `script` in a pristine interpreter with run.py booted, and return the
+    JSON it prints after the marker.
+
+    WHY A SUBPROCESS AND NOT THE `app` FIXTURE. Dash keeps its registrations in
+    a module-global list and drains it into the FIRST app that sets up a server,
+    so what `app.callback_map` holds inside a long session depends on test
+    order. Measured on this suite: 43 callbacks when the test ran alone, 2 when
+    it ran after the rest. A subprocess is the only instrument that reads what a
+    real worker would see, and this is the second time that lesson has been
+    learned here — `importlib.reload` does not simulate a worker either.
+
+    The script runs with `app` already set up, and must print
+    `RESULT:<json>` on one line.
+    """
+    import json
+    import subprocess
+
+    program = (
+        "import json, os, sys\n"
+        f"sys.path.insert(0, {str(REPO_ROOT)!r})\n"
+        "os.environ.setdefault('SATELLITE_APP_KEY', 'modelviewer')\n"
+        # Belt and braces over conftest's own blanking: a subprocess that
+        # inherited a live key would bill the owner for a test run.
+        "os.environ['CHATGPT_API_KEY'] = ''\n"
+        "os.environ['OPENAI_API_KEY'] = ''\n"
+        "os.environ['ANTHROPIC_API_KEY'] = ''\n"
+        "import run\n"
+        "app = run.app\n"
+        "app._setup_server()\n"
+    ) + script
+    result = subprocess.run(
+        [sys.executable, "-c", program],
+        cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=timeout,
+    )
+    assert result.returncode == 0, (
+        f"the fresh app did not boot:\n{result.stdout[-2000:]}\n{result.stderr[-2000:]}"
+    )
+    marked = [ln for ln in result.stdout.splitlines() if ln.startswith("RESULT:")]
+    assert len(marked) == 1, f"expected one RESULT line, got {len(marked)}"
+    return json.loads(marked[0][len("RESULT:"):])

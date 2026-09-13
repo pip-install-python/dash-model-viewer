@@ -18,8 +18,13 @@ from lib import build_stream, manifest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
+#: (module, poll args after the run id) — in the order the CALLBACK wires
+#: them, model then text. Calling the function in its own order was how a
+#: transposed signature on /generative-3d survived this suite: the
+#: provenance came out inverted on the page and correct here. See
+#: tests/test_callback_wiring.py.
 PAGES = {
-    "g3": ("docs.generative-3d.sculptor", ("a lighthouse", "claude-opus-5")),
+    "g3": ("docs.generative-3d.sculptor", ("claude-opus-5", "a lighthouse")),
     "si": ("docs.sculpt-from-image.sculpt_from_image", ("claude-opus-5", "the arches")),
 }
 
@@ -48,7 +53,11 @@ def _finished(prefix):
         "seconds": 12.0, "usd": 0.0432,
     })
     build_stream.finish(run, ok=True)
-    stored = page.poll(1, run, *args)[-3]
+    # Located by SHAPE, not by index. This was `[-3]`, and adding one output
+    # to the poll silently moved it onto a boolean — an index into a
+    # 14-tuple is a test that breaks when the code is merely extended.
+    returned = page.poll(1, run, *args)
+    stored = next(v for v in returned if isinstance(v, dict) and "parts" in v)
     return page, stored
 
 
