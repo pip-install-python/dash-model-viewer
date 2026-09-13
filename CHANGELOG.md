@@ -95,6 +95,20 @@ at the end of this entry.
 
 ### Added
 
+- **[Model Upload](/model-upload) — render your own `.glb`.** Every other page
+  hands `<model-viewer>` a model this site chose; this one takes a `dcc.Upload`
+  and renders the visitor's file, beside a readout of what is actually in it:
+  nodes, meshes, triangles, materials, textures, animation clips and the
+  extensions it declares. The file is identified by its CONTENT rather than the
+  media type the browser guessed — a `.glb` is recognised by its magic number
+  and version field, and its declared length is checked against the bytes
+  received, so a truncated transfer is named instead of failing silently in the
+  viewer. A `.gltf` JSON file is refused with the reason it cannot work: it
+  points at buffers and textures that were not uploaded with it. Reading is
+  header-and-JSON-chunk only, so describing a 30 MB model costs what describing
+  a 30 KB one costs. Rules live in `lib/uploads.py` beside the image ones; the
+  reader is `lib/glb.summarize()`.
+
 - **Drape the uploaded image over the sculpture it produced.**
   [Sculpt from an Image](/sculpt-from-image) gains a three-state texture
   switch: **Off** (the generated colours), **Preview** (draped on screen, the
@@ -104,9 +118,12 @@ at the end of this entry.
   placed, so the parts together carry one picture rather than each wearing its
   own copy — the unit-square-per-primitive alternative is what makes a
   28-part sculpture look like 28 small photographs. Draped parts take a white
-  base colour, because glTF multiplies base colour into the texture and a
-  brown part would otherwise stain its patch of the photo; metallic, roughness
-  and emissive stay per part, so a glowing part still glows. Switching back to
+  base colour, go fully non-metallic and take a roughness floor — glTF
+  multiplies base colour into the texture, and in metallic-roughness PBR the
+  diffuse term is `baseColor x (1 - metallic)`, so a part left at the
+  `metallic: 0.9` the prompt asks for on anything gold or polished showed
+  almost none of the picture. `emissive` is deliberately left alone, because it
+  adds light rather than replacing albedo, so a glowing part still glows. Switching back to
   Off is byte-identical to never having textured. The manifest stays
   textureless — draping happens at render time — so a saved manifest is the
   same file either way, and the whole switch works on a host with **no API

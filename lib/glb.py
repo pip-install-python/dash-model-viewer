@@ -36,7 +36,7 @@ from __future__ import annotations
 import json
 import math
 import struct
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 __all__ = ["Mesh", "Material", "GLBBuilder", "box", "sphere", "cylinder", "cone", "torus", "plane"]
 
@@ -465,3 +465,39 @@ def plane(w: float = 1.0, d: float = 1.0, **kw) -> Mesh:
     positions = [(-x, 0.0, z), (x, 0.0, z), (x, 0.0, -z), (-x, 0.0, -z)]
     uvs = [(0.0, 1.0), (1.0, 1.0), (1.0, 0.0), (0.0, 0.0)]
     return Mesh(positions, [0, 1, 2, 0, 2, 3], [(0, 1, 0)] * 4, uvs, **kw)
+
+
+def summarize(data: bytes) -> Dict[str, Any]:
+    """What is actually inside a `.glb`, read from its JSON chunk.
+
+    This is the READER half of this module, and it exists so /model-upload can
+    say something true about a visitor's file rather than only drawing it. It
+    parses the header and the first chunk only — no buffers are decoded, so the
+    cost does not grow with the size of the geometry.
+    """
+    if len(data) < 20 or data[:4] != b"glTF":
+        raise ValueError("not a binary glTF")
+    chunk_length = struct.unpack("<I", data[12:16])[0]
+    gltf = json.loads(data[20:20 + chunk_length])
+
+    triangles = 0
+    for mesh in gltf.get("meshes", []):
+        for primitive in mesh.get("primitives", []):
+            index = primitive.get("indices")
+            if index is None:
+                continue
+            triangles += gltf["accessors"][index].get("count", 0) // 3
+
+    return {
+        "generator": gltf.get("asset", {}).get("generator", "unknown"),
+        "version": gltf.get("asset", {}).get("version", "?"),
+        "nodes": len(gltf.get("nodes", [])),
+        "meshes": len(gltf.get("meshes", [])),
+        "materials": len(gltf.get("materials", [])),
+        "textures": len(gltf.get("textures", [])),
+        "animations": len(gltf.get("animations", [])),
+        "animation_names": [a.get("name", "") for a in gltf.get("animations", [])],
+        "extensions": sorted(gltf.get("extensionsUsed", [])),
+        "triangles": triangles,
+        "bytes": len(data),
+    }

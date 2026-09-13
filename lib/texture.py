@@ -17,12 +17,31 @@ projection still drapes once, because it reads finished geometry.
 
 WHAT IT COSTS, STATED HERE BECAUSE THE PAGE STATES IT TOO
 --------------------------------------------------------
-glTF multiplies `baseColorFactor` into `baseColorTexture`, so a part keeping its
-generated colour would tint the photo — a brown crate would stain its patch of
-the image brown. Textured parts therefore get a WHITE base colour and the
-photograph shows true. Everything else about the surface survives: metallic,
-roughness and emissive are per part and are left alone, so a glowing part still
-glows under the texture. Turning the texture off restores the colours exactly.
+Three things have to change on a draped part, and the second one is the one I
+got wrong first.
+
+1. THE COLOUR. glTF multiplies `baseColorFactor` into `baseColorTexture`, so a
+   part keeping its generated colour would stain its patch of the photo — a
+   brown crate tints that region brown. Draped parts take white.
+2. THE METALLIC FACTOR. In metallic-roughness PBR the diffuse contribution is
+   `baseColor x (1 - metallic)`: at `metallic` 0.8 only a fifth of the picture
+   survives, and at 1.0 none of it does — the base colour stops being albedo
+   and becomes the specular tint of a mirror. The prompt actively asks models
+   for "metallic near 1.0 with roughness under 0.3" for anything gold or
+   polished, so a generated sculpture reliably contains parts on which an
+   untouched `metallic` makes the texture INVISIBLE. That is not a subtle
+   dulling; it is the feature silently not working, and it is what the owner
+   saw. Draped parts therefore go fully non-metallic.
+3. THE ROUGHNESS, to a floor. A mirror-smooth surface shows the environment
+   rather than its own albedo, so a part at roughness 0.05 hides the picture
+   for the same reason. Relative variation above the floor is kept.
+
+`emissive` is deliberately LEFT ALONE: it adds light on top of the shaded
+surface rather than replacing albedo, so a glowing part still glows and the
+picture still reads underneath it.
+
+None of this touches the scene — only the meshes built from it — so turning the
+texture off restores every part exactly.
 
 THE MANIFEST STAYS TEXTURELESS. Draping happens at RENDER time, never in the
 scene description, so a manifest's bytes are the same whether or not it was
@@ -45,6 +64,15 @@ MAX_TEXTURE_PX = 640
 
 #: White, so the photograph shows true rather than tinted by the part.
 NEUTRAL = (1.0, 1.0, 1.0, 1.0)
+
+#: A draped part is a printed surface, not a metal one. See the module note:
+#: diffuse is `baseColor x (1 - metallic)`, so anything above ~0 progressively
+#: erases the picture and 1.0 erases it completely.
+DRAPED_METALLIC = 0.0
+
+#: Floor on roughness while draped. A near-mirror shows the environment instead
+#: of its own albedo, which hides the picture just as effectively as metal.
+MIN_DRAPED_ROUGHNESS = 0.4
 
 
 def prepare(raw: bytes) -> bytes:
@@ -103,6 +131,9 @@ def drape(meshes: Sequence[glb.Mesh], image: bytes) -> int:
             for x, y, _z in glb.world_positions(mesh)
         ]
         mesh.material.base_color = list(NEUTRAL)
+        mesh.material.metallic = DRAPED_METALLIC
+        mesh.material.roughness = max(mesh.material.roughness,
+                                      MIN_DRAPED_ROUGHNESS)
         mesh.material.texture_png = image
         draped += 1
     return draped

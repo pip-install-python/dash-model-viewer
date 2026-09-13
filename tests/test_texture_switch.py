@@ -154,22 +154,50 @@ def test_draping_does_not_touch_the_manifest():
     assert "texture" not in before.lower()
 
 
-def test_only_the_colour_is_replaced_not_the_whole_surface():
-    """The trade-off is NARROWER than a single shared material would give.
-    glTF multiplies baseColorFactor into the texture, so the colour must go
-    white or the photo is tinted — but metallic, roughness and emissive are
-    per part and survive, so a glowing part still glows while draped."""
+def test_a_draped_part_can_actually_BE_SEEN():
+    """THE BUG THE OWNER FOUND, as a regression.
+
+    I shipped this preserving each part's `metallic`, on the argument that it
+    made the trade-off narrower than replacing the whole surface. That argument
+    is physically wrong: in metallic-roughness PBR the diffuse term is
+    `baseColor x (1 - metallic)`, so a part at 0.8 shows a fifth of the picture
+    and a part at 1.0 shows none of it — the base colour stops being albedo and
+    becomes a mirror's specular tint. The prompt asks models for "metallic near
+    1.0 with roughness under 0.3" for anything gold or polished, so real
+    sculptures reliably contain parts where the texture was simply invisible.
+
+    Asserted on the MATERIALS IN THE FILE, not on the inputs, because that is
+    what the renderer reads.
+    """
+    scene = _sample("brazier")
+    draped = _gltf(manifest.render(scene, texture_png=texture.prepare(_image()))[0])
+
+    assert any(p.get("metallic", 0) >= 0.4 for p in scene["parts"]), (
+        "this sample must contain a shiny part, or it proves nothing"
+    )
+    for material in draped["materials"]:
+        pbr = material["pbrMetallicRoughness"]
+        assert pbr["baseColorFactor"] == [1.0, 1.0, 1.0, 1.0]
+        assert pbr["metallicFactor"] == 0.0, (
+            f"{material['name']} is {pbr['metallicFactor']} metallic while "
+            f"draped — the picture is suppressed by that factor"
+        )
+        assert pbr["roughnessFactor"] >= texture.MIN_DRAPED_ROUGHNESS, (
+            f"{material['name']} is near-mirror while draped — it shows the "
+            f"environment rather than the photograph"
+        )
+
+
+def test_a_glowing_part_still_glows_while_draped():
+    """The one surface property deliberately left alone. Emissive ADDS light on
+    top of the shaded surface rather than replacing albedo, so it does not
+    suppress the picture the way metallic does."""
     scene = _sample("brazier")
     plain = _gltf(manifest.render(scene)[0])["materials"]
     draped = _gltf(manifest.render(scene, texture_png=texture.prepare(_image()))[0])["materials"]
 
     assert any("emissiveFactor" in m for m in plain), "the sample must have a glow"
     for before, after in zip(plain, draped):
-        assert after["pbrMetallicRoughness"]["baseColorFactor"] == [1.0, 1.0, 1.0, 1.0]
-        assert after["pbrMetallicRoughness"]["metallicFactor"] == \
-            before["pbrMetallicRoughness"]["metallicFactor"]
-        assert after["pbrMetallicRoughness"]["roughnessFactor"] == \
-            before["pbrMetallicRoughness"]["roughnessFactor"]
         assert after.get("emissiveFactor") == before.get("emissiveFactor")
 
 
@@ -186,6 +214,13 @@ def test_preview_shows_the_texture_but_downloads_without_it():
 
     src, note, label = page.retexture("preview", scene, image)
     assert src.startswith("data:model/gltf-binary;base64,")
+    # THE ASSERTION THIS TEST WAS MISSING. It checked only that a data URL came
+    # back, so it passed while the picture was invisible on screen. "A render
+    # happened" is not "the render is textured".
+    shown = _gltf(base64.b64decode(src.split(",", 1)[1]))
+    assert len(shown["images"]) == 1, "preview must actually show the texture"
+    assert all(m["pbrMetallicRoughness"]["metallicFactor"] == 0.0
+               for m in shown["materials"]), "and show it visibly"
     assert "untextured" in label, "the button must say what it will hand over"
     assert "untextured" in note
 
