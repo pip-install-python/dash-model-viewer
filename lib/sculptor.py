@@ -314,6 +314,15 @@ the bed. Referencing does not reduce the leaf budget; it reduces what you have
 to get right, and it guarantees the four wheels are identical because they ARE
 the same wheel. Spend the parts you save on detail, not on repetition.
 
+JOINTS — parts MAY AND SHOULD INTERPENETRATE where they join. A lamp sits
+INTO the top of its tower, not balanced on it; a column is sunk INTO the floor,
+not resting on it; an arm goes INTO the body. Overlap by a few centimetres
+wherever two parts meet.
+This matters more than it sounds. Parts that merely touch — or that leave a
+millimetre of air — read as separate objects stacked in a pile, however well
+placed. Parts that interpenetrate read as one carved mass. Do not make surfaces
+meet exactly; push them through each other.
+
 COMPOSITION — what decides whether it reads as art rather than as a diagram:
 - Vary scale deliberately: a few large masses carry the silhouette, then
   smaller parts for detail. Repetition WITH variation reads better than
