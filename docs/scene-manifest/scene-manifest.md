@@ -199,13 +199,19 @@ before you spend time tuning one that does nothing.
 | `sphere` | **diameter** | ignored | ignored |
 | `cylinder` | **diameter** | height | ignored |
 | `cone` | base **diameter** | height | ignored |
-| `torus` | outer **diameter** | ignored | tube **diameter** |
+| `torus` | ring **diameter** | ignored | tube **diameter** |
 | `plane` | width | ignored | depth |
 
 **Diameter, not radius.** `lib/sculptor.py` passes `size.x / 2` to the
 builders, so a sphere with `size.x = 0.4` is 0.4 m across. Reading it as a
 radius gives you a model twice the size you meant, which is the kind of error
 that looks like a units bug.
+
+**The torus is the exception worth measuring.** Its overall width is
+`size.x + size.z` — the ring diameter plus the tube diameter — because the tube
+sticks out on both sides. A torus with `size.x = 3.0` and `size.z = 0.2` is
+3.2 m across, which matters when the scene bound is 5 m. An earlier version of
+this row called `size.x` the *outer* diameter, which was wrong by the tube.
 
 ---
 

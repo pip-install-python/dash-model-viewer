@@ -50,6 +50,27 @@ MAX_EXTENT = 4.0          # metres, any single dimension
 MAX_SCENE_RADIUS = 5.0    # metres from origin
 MAX_GLB_BYTES = 3_000_000
 
+# --- manifest v2 bounds -----------------------------------------------------
+# Declared here, beside MAX_PARTS, so the schema page's v2 rows READ them
+# rather than restating them. The v1 rows already work that way and the habit
+# is why four wrong lines were caught in that page's draft.
+#
+# Inert until v2 lands: nothing imports these yet. They are here first so the
+# page and the validator cannot be written against different numbers.
+
+#: How deep a `group` may nest before the expander refuses. Four levels is a
+#: cart (scene -> cart -> wheel-assembly -> leaf) with one to spare; deeper is
+#: almost always a model repeating itself rather than describing structure.
+MAX_DEPTH = 4
+
+#: How many entries `defs` may hold. A sculpture with more than eight distinct
+#: repeated sub-assemblies is not using instancing, it is using a parts bin.
+MAX_DEFS = 8
+
+#: `MAX_PARTS` counts LEAF parts AFTER expansion in v2 — a `ref` costs its
+#: def's leaf count every time it is placed. Stated here because the number is
+#: unchanged and its meaning is not.
+
 _HEX = re.compile(r"^#?([0-9a-fA-F]{6})$")
 
 

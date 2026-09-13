@@ -179,3 +179,25 @@ def test_no_sample_claims_a_model_it_did_not_come_from():
 def test_the_page_states_the_no_store_rule(prose):
     for claim in ("never written to disk", "no manifest store"):
         assert claim in prose.lower(), f"the page does not state: {claim}"
+
+
+def test_the_torus_row_does_not_call_size_x_the_outer_diameter():
+    """Measured: a torus is `size.x + size.z` across, because the tube sticks
+    out on both sides. The shipped page called size.x the OUTER diameter, which
+    is wrong by the tube — a 3.0/0.2 torus is 3.2 m wide, and the scene bound
+    is 5 m, so the error matters at the edge of the budget.
+    """
+    import lib.glb as glb
+
+    kw = dict(material=glb.Material(), translation=(0, 0, 0),
+              rotation_euler=(0, 0, 0), name="t")
+    for x, z in ((1.0, 1.0), (3.0, 0.2), (2.0, 0.4)):
+        mesh = glb.torus(x / 2, max(0.005, z / 2), **kw)
+        xs = [p[0] for p in mesh.positions]
+        assert abs((max(xs) - min(xs)) - (x + z)) < 1e-9, (x, z)
+
+    row = next(line for line in PAGE.read_text(encoding="utf-8").splitlines()
+               if line.startswith("| `torus`"))
+    assert "outer" not in row, "size.x is the RING diameter, not the outer one"
+    prose = " ".join(PAGE.read_text(encoding="utf-8").split())
+    assert "size.x + size.z" in prose, "the page must state the real width"
