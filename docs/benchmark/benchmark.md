@@ -34,7 +34,7 @@ rather than a row in a table.
 
 ---
 
-### What the three axes mean
+### What the four axes mean
 
 **Model** is the biggest lever, and not in the direction you would guess. See
 the measured sweep below.
@@ -49,6 +49,28 @@ is not a safety net — it is a quality dial with a cliff. Set it too low and th
 JSON is truncated mid-object and the variant fails outright. When that happens
 the panel says `stop=max_tokens`, because "the model did not return usable
 JSON" is a misleading way to describe running out of budget.
+
+**Prompt version** is the newest axis and the only one that varies *this
+site's own instructions* rather than the model's settings. **v1** is what every
+other page uses. **v2** teaches the model version 2 of the
+[scene manifest](/scene-manifest) — defining a shape once and placing it
+several times — and adds one further instruction: that parts **may and should
+interpenetrate where they join**, because a lamp sits *into* the top of its
+tower rather than balancing on it.
+
+v2 is not the default anywhere a sculpture is generated, and that is
+deliberate. Its entire claim is "it produces better sculptures", and only model
+runs can show that. Making it the default on an argument would be exactly the
+mistake this page exists to prevent, so v2 runs **here and nowhere else** until
+a sweep says it earns the promotion.
+
+Every result panel carries the number that claim turns into: of the part pairs
+close enough to read as joined, how many actually **blend** — interpenetrate —
+rather than merely touching. It is computed from the manifest by geometry
+alone, with no rendering and no second call, so it costs nothing and cannot
+flatter the run. Pick the prompt axis, keep everything else fixed, and the
+difference in that percentage is attributable to the instructions and nothing
+else.
 
 Only one axis varies per run. Two moving variables make a comparison
 unreadable, and a full grid is a combinatorial bill.

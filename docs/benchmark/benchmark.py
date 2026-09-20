@@ -33,8 +33,11 @@ import dash_mantine_components as dmc
 from dash import Input, Output, State, callback, dcc, html, no_update
 
 import dash_model_viewer as dmv
-from lib import model_picker, spend
-from lib.sculptor import MAX_TOKENS, sculpt
+from lib import model_picker, overlap, spend
+from lib.sculptor import (
+    DEFAULT_PROMPT_VERSION, MAX_TOKENS, PROMPT_VERSION_LABELS,
+    PROMPT_VERSIONS, sculpt,
+)
 
 MAX_VARIANTS = 4
 
@@ -74,6 +77,10 @@ def _panel(result, viewer_id: str):
                     dmc.Badge(f"{result.seconds:.0f}s", color="gray", variant="light"),
                     dmc.Badge(f"~${result.usd:.3f}", color="teal", variant="light"),
                 ]),
+                # G7a's column. Placed with the badges rather than buried in
+                # the small print because it is the number the prompt axis
+                # exists to move.
+                dmc.Text(blend(result), size="xs", c="indigo"),
                 dmc.Text(
                     f"{result.output_tokens:,} out / {result.input_tokens:,} in"
                     f"  ·  {result.triangles:,} triangles"
@@ -100,7 +107,30 @@ def _panel(result, viewer_id: str):
 
 def result_label(result) -> str:
     short = result.model.replace("claude-", "")
-    return f"{short} · {result.effort} · {result.max_tokens:,} tok"
+    return (f"{short} · {result.effort} · {result.max_tokens:,} tok · "
+            f"prompt {result.prompt_version}")
+
+
+def blend(result) -> str:
+    """G7a's interpenetration rate for one cell, from geometry alone.
+
+    THE NUMBER THE PROMPT AXIS EXISTS TO MOVE. The owner's words were that the
+    output is "a lot of rigid shapes ... able to blend better together", and
+    v2's joint guidance is the attempt at it. Of the part pairs close enough to
+    read as joined, what fraction actually interpenetrate rather than merely
+    touching? Computed from the manifest the model returned — no rendering, no
+    second call — so it costs nothing to show and cannot flatter the run.
+    """
+    if not result.ok or not result.manifest:
+        return ""
+    try:
+        report = overlap.report(result.manifest)
+    except Exception:                                     # noqa: BLE001
+        return ""
+    if report["rate"] is None:
+        return f"{report['parts']} parts, no joints"
+    return (f"{report['overlapping']}/{report['joints']} joints blend "
+            f"({report['rate']:.0%})")
 
 
 component = dmc.Stack(
@@ -123,6 +153,7 @@ component = dmc.Stack(
                     {"value": "effort", "label": "Vary effort"},
                     {"value": "budget", "label": "Vary max tokens"},
                     {"value": "model", "label": "Vary model"},
+                    {"value": "prompt", "label": "Vary prompt version"},
                 ],
                 value="model",
                 fullWidth=True,
@@ -152,6 +183,20 @@ component = dmc.Stack(
                 # pages are imported before run.py warms OpenAI discovery.
                 children=dmc.Group(id="bm-model-boxes", gap="md"),
             ),
+            dmc.CheckboxGroup(
+                id="bm-prompts",
+                label="Prompt versions to compare",
+                description=(
+                    "v1 is what every other page uses. v2 teaches defs/ref/group "
+                    "and tells the model parts may interpenetrate where they "
+                    "join — it is measured here before it is believed anywhere."
+                ),
+                value=list(PROMPT_VERSIONS),
+                children=dmc.Group([
+                    dmc.Checkbox(label=PROMPT_VERSION_LABELS[v], value=v)
+                    for v in PROMPT_VERSIONS
+                ], gap="md"),
+            ),
             dcc.Interval(id="bm-model-init", interval=150, max_intervals=1),
             dmc.Text(id="bm-model-status", size="xs", c="dimmed"),
             dmc.Grid(gutter="md", children=[
@@ -167,6 +212,12 @@ component = dmc.Stack(
                 dmc.GridCol(dmc.NumberInput(
                     id="bm-fixed-budget", label="Fixed max tokens",
                     value=MAX_TOKENS, min=1000, max=32000, step=1000,
+                ), span={"base": 12, "sm": 4}),
+                dmc.GridCol(dmc.Select(
+                    id="bm-fixed-prompt", label="Fixed prompt version",
+                    data=[{"value": v, "label": PROMPT_VERSION_LABELS[v]}
+                          for v in PROMPT_VERSIONS],
+                    value=DEFAULT_PROMPT_VERSION,
                 ), span={"base": 12, "sm": 4}),
             ]),
             dmc.Textarea(
@@ -191,14 +242,25 @@ component = dmc.Stack(
 )
 
 
-def _variants(axis, efforts, budgets, models, f_model, f_effort, f_budget):
-    """(model, effort, max_tokens) per cell. Exactly one axis moves."""
+def _variants(axis, efforts, budgets, models, f_model, f_effort, f_budget,
+              prompts=None, f_prompt=DEFAULT_PROMPT_VERSION):
+    """(model, effort, max_tokens, prompt_version) per cell. One axis moves."""
     f_budget = int(f_budget or MAX_TOKENS)
+    f_prompt = f_prompt or DEFAULT_PROMPT_VERSION
     if axis == "effort":
-        return [(f_model, e, f_budget) for e in (efforts or [])[:MAX_VARIANTS]]
+        return [(f_model, e, f_budget, f_prompt)
+                for e in (efforts or [])[:MAX_VARIANTS]]
     if axis == "budget":
-        return [(f_model, f_effort, int(b)) for b in (budgets or [])[:MAX_VARIANTS]]
-    return [(m, f_effort, f_budget) for m in (models or [])[:MAX_VARIANTS]]
+        return [(f_model, f_effort, int(b), f_prompt)
+                for b in (budgets or [])[:MAX_VARIANTS]]
+    if axis == "prompt":
+        # The reason this axis exists: the same model, the same budget, the
+        # same words — only the system prompt differs, so a difference in the
+        # result is attributable to the prompt and nothing else.
+        return [(f_model, f_effort, f_budget, v)
+                for v in (prompts or [])[:MAX_VARIANTS]]
+    return [(m, f_effort, f_budget, f_prompt)
+            for m in (models or [])[:MAX_VARIANTS]]
 
 
 @callback(
@@ -210,13 +272,17 @@ def _variants(axis, efforts, budgets, models, f_model, f_effort, f_budget):
     Input("bm-fixed-model", "value"),
     Input("bm-fixed-effort", "value"),
     Input("bm-fixed-budget", "value"),
+    Input("bm-prompts", "value"),
+    Input("bm-fixed-prompt", "value"),
 )
-def _estimate(axis, efforts, budgets, models, f_model, f_effort, f_budget):
+def _estimate(axis, efforts, budgets, models, f_model, f_effort, f_budget,
+              prompts, f_prompt):
     """Price the matrix BEFORE it runs. See the module docstring."""
-    variants = _variants(axis, efforts, budgets, models, f_model, f_effort, f_budget)
+    variants = _variants(axis, efforts, budgets, models, f_model, f_effort,
+                         f_budget, prompts, f_prompt)
     if not variants:
         return "Select at least one variant."
-    total = sum(spend.estimate_usd(m, t) for m, _e, t in variants)
+    total = sum(spend.estimate_usd(m, t) for m, _e, t, _v in variants)
     left = spend.remaining()
     return (f"{len(variants)} variant{'s' if len(variants) != 1 else ''} · "
             f"up to ~${total:.2f} if every one uses its full budget · "
@@ -236,6 +302,8 @@ def _estimate(axis, efforts, budgets, models, f_model, f_effort, f_budget):
     State("bm-fixed-effort", "value"),
     State("bm-fixed-budget", "value"),
     State("bm-prompt", "value"),
+    State("bm-prompts", "value"),
+    State("bm-fixed-prompt", "value"),
     running=[
         (Output("bm-run", "loading"), True, False),
         (Output("bm-run", "disabled"), True, False),
@@ -243,11 +311,13 @@ def _estimate(axis, efforts, budgets, models, f_model, f_effort, f_budget):
     ],
     prevent_initial_call=True,
 )
-def _run(_clicks, axis, efforts, budgets, models, f_model, f_effort, f_budget, prompt):
+def _run(_clicks, axis, efforts, budgets, models, f_model, f_effort, f_budget,
+         prompt, prompts, f_prompt):
     if not (prompt or "").strip():
         return no_update, "Write a prompt first.", "yellow"
 
-    variants = _variants(axis, efforts, budgets, models, f_model, f_effort, f_budget)
+    variants = _variants(axis, efforts, budgets, models, f_model, f_effort,
+                         f_budget, prompts, f_prompt)
     if not variants:
         return no_update, "Select at least one variant to compare.", "yellow"
 
@@ -260,7 +330,7 @@ def _run(_clicks, axis, efforts, budgets, models, f_model, f_effort, f_budget, p
                 "would be identical. Pick another model, or vary a different axis.",
                 "red")
     # One gate for the whole matrix, priced pessimistically.
-    estimate = sum(spend.estimate_usd(m, t) for m, _e, t in variants)
+    estimate = sum(spend.estimate_usd(m, t) for m, _e, t, _v in variants)
     verdict = spend.check(len(variants), estimate)
     if not verdict.allowed:
         return no_update, verdict.reason, "red"
@@ -269,18 +339,20 @@ def _run(_clicks, axis, efforts, budgets, models, f_model, f_effort, f_budget, p
     started = time.monotonic()
 
     def one(item):
-        index, (model, effort, budget) = item
+        index, (model, effort, budget, version) = item
         began = time.monotonic()
         try:
             # The per-call budget gate is already satisfied for the matrix as a
             # whole; re-checking per variant would fail the tail of a run that
             # was approved, which is worse than approving it once.
             result = sculpt(prompt.strip(), model=model, effort=effort,
-                            max_tokens=budget, enforce_budget=False)
+                            max_tokens=budget, enforce_budget=False,
+                            prompt_version=version)
         except Exception as exc:  # one bad variant must not lose the others
             from lib.sculptor import SculptResult
             result = SculptResult(ok=False, reason=f"{type(exc).__name__}: {exc}",
-                                  model=model, effort=effort, max_tokens=budget)
+                                  model=model, effort=effort, max_tokens=budget,
+                                  prompt_version=version)
         if not result.seconds:
             result.seconds = time.monotonic() - began
         return index, result

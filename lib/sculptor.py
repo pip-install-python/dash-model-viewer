@@ -116,6 +116,25 @@ MAX_DEPTH = 4
 #: repeated sub-assemblies is not using instancing, it is using a parts bin.
 MAX_DEFS = 8
 
+#: The prompt versions /benchmark can sweep.
+#:
+#: v1 IS THE DEFAULT EVERYWHERE A SCULPTURE IS GENERATED, and stays that way
+#: until there is a measurement. SYSTEM_V2 is better by ARGUMENT — it teaches
+#: defs/ref/group, and it tells a model that parts may interpenetrate where
+#: they join — but the entire claim is "it produces better sculptures", and
+#: only model runs can show that. Making it the default on an argument would
+#: be exactly the move this repo keeps catching itself making. Until a sweep
+#: exists, the only place v2 runs is /benchmark, where running it IS the point.
+PROMPT_VERSIONS = ("v1", "v2")
+DEFAULT_PROMPT_VERSION = "v1"
+
+#: What each version is for, shown on the page beside the checkbox.
+PROMPT_VERSION_LABELS = {
+    "v1": "v1 (shipped)",
+    "v2": "v2 (defs + joints)",
+}
+
+
 #: `MAX_PARTS` counts LEAF parts AFTER expansion in v2 — a `ref` costs its
 #: def's leaf count every time it is placed. Stated here because the number is
 #: unchanged and its meaning is not.
@@ -144,6 +163,9 @@ class SculptResult:
     stop_reason: str = ""
     triangles: int = 0
     palette: int = 0
+    #: Which system prompt produced this. Recorded so a benchmark row can say
+    #: what it was comparing rather than relying on the reader's memory.
+    prompt_version: str = DEFAULT_PROMPT_VERSION
 
 
 def available() -> bool:
@@ -337,6 +359,16 @@ COMPOSITION — what decides whether it reads as art rather than as a diagram:
   different colour per part looks like a test scene, not a sculpture.
 
 Keep `notes` to one sentence about the idea."""
+
+
+def system_for(prompt_version: str) -> str:
+    """The system prompt for a version name.
+
+    An unknown name falls back to the default rather than raising: this is
+    reached from a sweep, and a stale value in a control should run the
+    shipped prompt rather than take the page down.
+    """
+    return SYSTEM_V2 if prompt_version == "v2" else SYSTEM
 
 
 def _schema() -> Dict[str, Any]:
@@ -590,10 +622,12 @@ def sculpt(
     effort: str = EFFORT,
     max_tokens: int = MAX_TOKENS,
     enforce_budget: bool = True,
+    prompt_version: str = DEFAULT_PROMPT_VERSION,
 ) -> SculptResult:
     """One sculpt. The knobs are arguments so /benchmark can sweep them."""
     request = (request or "").strip()
-    meta = dict(model=model, effort=effort, max_tokens=max_tokens)
+    meta = dict(model=model, effort=effort, max_tokens=max_tokens,
+                prompt_version=prompt_version)
     if not request:
         return SculptResult(ok=False, reason="Describe what you want sculpted.", **meta)
     if len(request) > 400:
@@ -603,7 +637,8 @@ def sculpt(
         if not verdict.allowed:
             return SculptResult(ok=False, reason=verdict.reason, **meta)
     if provider_of(model) == "openai":
-        return _sculpt_openai(prompt_for(request, style), model, max_tokens, meta)
+        return _sculpt_openai(prompt_for(request, style), model, max_tokens, meta,
+                              system=system_for(prompt_version))
 
     if not available():
         return SculptResult(
@@ -637,7 +672,7 @@ def sculpt(
         response = client.messages.create(
             model=model,
             max_tokens=max_tokens,
-            system=SYSTEM,
+            system=system_for(prompt_version),
             output_config=output_config,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -835,7 +870,8 @@ def sculpt_image_streaming(
 
 
 def _sculpt_openai(
-    prompt: str, model: str, max_tokens: int, meta: Dict[str, Any]
+    prompt: str, model: str, max_tokens: int, meta: Dict[str, Any],
+    system: str = "",
 ) -> SculptResult:
     """The OpenAI path. Same schema, same clamps, same GLB writer.
 
@@ -850,7 +886,7 @@ def _sculpt_openai(
     try:
         scene, usage, stop_reason = openai_client.complete_json(
             model=model,
-            system=SYSTEM,
+            system=system or SYSTEM,
             prompt=prompt,
             schema=_schema(),
             max_tokens=max_tokens,

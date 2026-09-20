@@ -95,6 +95,21 @@ at the end of this entry.
 
 ### Added
 
+- **A prompt-version axis on [Benchmark](/benchmark).** The page's fourth
+  axis varies *this site's own instructions* rather than the model's settings:
+  **v1**, which every other page uses, against **v2**, which teaches the model
+  scene-manifest version 2 and adds one further instruction — that parts may
+  and should interpenetrate where they join, because a lamp sits *into* the top
+  of its tower rather than balancing on it. Every other setting is held, so a
+  difference is attributable to the prompt. Each result panel now carries the
+  number that claim turns into: of the part pairs close enough to read as
+  joined, how many actually **blend** rather than merely touching — computed
+  from the returned manifest by geometry alone, with no rendering and no second
+  call. **v2 is the default nowhere.** Its whole claim is that it produces
+  better sculptures, and only model runs can show that, so it runs here and
+  nowhere else until a sweep earns the promotion; a test fails if any page that
+  generates sculptures ever selects it.
+
 - **Scene manifest version 2 — define a thing once and place it.** Three
   additive entries: a `defs` block naming sub-assemblies, a `ref` that places
   one, and a `group` that gathers parts under a shared transform. Nesting is
