@@ -47,7 +47,7 @@ import json
 import math
 from typing import Any, Iterable, List, Sequence, Tuple
 
-from dash import Input, Output, State, clientside_callback, dcc
+from dash import Input, Output, clientside_callback, dcc
 
 from lib import build_stream
 
@@ -153,6 +153,17 @@ def register(prefix: str, status_id: str,
         guard_js(len(outputs), values),
         outputs,
         Input(f"{prefix}-poll", "n_intervals"),
-        State(f"{prefix}-alive", "data"),
+        # AN INPUT, NOT A STATE, AND THE REASON IS THE CALLBACK ID.
+        # `allow_duplicate` disambiguates two writers of the same property by
+        # hashing the callback's INPUTS — and nothing else. With `-alive` as a
+        # State, this guard's only input was `-poll.n_intervals`, exactly the
+        # poll's, so every output the two share resolved to the SAME qualified
+        # id: nine collisions across the two pages. Dash's renderer rejects
+        # that graph ("Duplicate callback outputs"), which only surfaces with
+        # dev tools on — so it reached production looking fine. Reading the
+        # store as an Input changes the input list, and with it the hash.
+        # It also costs nothing: both props change in the same poll response,
+        # so this still fires once per tick.
+        Input(f"{prefix}-alive", "data"),
         prevent_initial_call=True,
     )

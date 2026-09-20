@@ -183,3 +183,80 @@ def test_generative_3d_provenance_is_the_right_way_round():
     provenance = stored["provenance"]
     assert provenance["model"] == "claude-opus-5", "the model id belongs in 'model'"
     assert provenance["prompt"] == "a tall lighthouse", "and the text in 'prompt'"
+
+
+# --------------------------------------------------------------------------
+# The renderer's own rule, which the server does not enforce
+# --------------------------------------------------------------------------
+
+
+def qualified_outputs(app):
+    """Every (output, writer) pair, keyed the way the BROWSER keys them.
+
+    `allow_duplicate` lets two callbacks write the same property, and Dash
+    tells them apart by appending a hash OF THE CALLBACK'S INPUTS — nothing
+    else. So two callbacks with the same input list writing the same property
+    produce the SAME qualified id, and the renderer rejects the graph with
+    "Duplicate callback outputs".
+    """
+    from collections import defaultdict
+
+    seen = defaultdict(list)
+    for key, spec in app.callback_map.items():
+        outputs = key.strip(".").split("...") if key.startswith("..") else [key]
+        writer = getattr(spec.get("callback"), "__name__", "<clientside>")
+        for output in outputs:
+            seen[output].append(writer)
+    return seen
+
+
+def test_no_two_callbacks_declare_the_same_qualified_output():
+    """THE GATE, and it is here because this shipped.
+
+    `lib/poll_guard`'s stale guard had `-poll.n_intervals` as its only Input —
+    exactly the poll's — so every property the two shared collided: nine
+    duplicates across /sculpt-from-image and /generative-3d. The server
+    registers such a graph happily; only the RENDERER refuses it, and only
+    visibly with dev tools on, so it reached production looking healthy and
+    broke the moment the owner set `debug=True`.
+
+    The fix was to read the liveness store as an Input rather than a State,
+    which changes the input list and so the hash.
+    """
+    got = in_fresh_app(
+        "from collections import defaultdict\n"
+        "seen = defaultdict(list)\n"
+        "for key, spec in app.callback_map.items():\n"
+        "    outs = key.strip('.').split('...') if key.startswith('..') else [key]\n"
+        "    writer = getattr(spec.get('callback'), '__name__', '<clientside>')\n"
+        "    for o in outs:\n"
+        "        seen[o].append(writer)\n"
+        "print('RESULT:' + json.dumps({'total': len(seen),\n"
+        "      'dupes': {o: w for o, w in seen.items() if len(w) > 1}}))\n"
+    )
+    assert got["total"] > 100, (
+        f"only {got['total']} outputs seen — the sweep is not reading the app"
+    )
+    assert not got["dupes"], (
+        "two callbacks write the same qualified output; the renderer will "
+        "refuse this graph:\n  " + "\n  ".join(
+            f"{o} <- {w}" for o, w in got["dupes"].items())
+    )
+
+
+def test_the_stale_guard_and_the_poll_do_not_share_an_input_list():
+    """The specific shape, pinned where a reader will look for it: these two
+    write the same properties, so their input lists must differ or their
+    outputs collide."""
+    import hashlib
+
+    from lib import poll_guard
+
+    assert "Input(f\"{prefix}-alive\", \"data\")" in inspect.getsource(poll_guard.register)
+
+    def digest(inputs):
+        return hashlib.sha256(".".join(inputs).encode()).hexdigest()
+
+    poll_inputs = ["<Input `si-poll.n_intervals`>"]
+    guard_inputs = poll_inputs + ["<Input `si-alive.data`>"]
+    assert digest(poll_inputs) != digest(guard_inputs)
