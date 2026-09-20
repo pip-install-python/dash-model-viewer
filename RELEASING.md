@@ -73,6 +73,36 @@ and is not replaceable by a test.
 - [ ] `examples/manual_walk.py` covers the props no page exercises and the
       error path
 
+#### What 1.0.0 added after the first walk
+
+These pages did not exist, or did not do this, when the walk above was
+written. Each row is something **no test on this repo can see** — the tests
+assert the bytes and the wiring; only a person can confirm the pixels.
+
+- [ ] **`/sculpt-from-image` — the texture switch, on a sculpture with
+      METALLIC parts.** This is the row that matters most, because it is the
+      one that already shipped broken once. A draped part is forced
+      non-metallic with a roughness floor, because glTF's diffuse term is
+      `baseColor x (1 - metallic)` and the prompt asks models for
+      `metallic` near 1.0 for anything gold or polished — so the photograph was
+      invisible on exactly those parts. Sculpt something with gold or polish in
+      it, switch to **Include**, and confirm the picture reads there.
+      Then **Off**, and confirm the generated colours come back.
+- [ ] **`/sculpt-from-image` — Preview downloads the PLAIN `.glb`.** The button
+      relabels itself "(untextured)". Confirm the file you get matches what the
+      button says rather than what is on screen.
+- [ ] **`/scene-manifest` — load `cart.json`, then `cart-flat.json`.** They must
+      look like the same cart. One is 4 entries and 4 meshes, the other 8 and 8.
+- [ ] **`/model-upload` — drop a real `.glb`.** Confirm it renders and that the
+      readout's triangle count is plausible for the file. Then try a `.gltf` and
+      confirm the refusal explains why it cannot work.
+- [ ] **`/benchmark` — the prompt-version axis appears** and the estimate
+      updates when it is selected. Running it **spends credits** and is gated on
+      Q3; selecting it without running is enough for the walk.
+- [ ] **A stale tab is told so.** Leave a generating page open across a deploy
+      and confirm it says "This page is out of date" rather than spinning. Any
+      tab opened before the guard shipped cannot show this — reload first.
+
 ### 5. The PyPI publisher — **the owner's, on pypi.org**
 
 Trusted publishing stores no token; PyPI verifies a short-lived OIDC token
