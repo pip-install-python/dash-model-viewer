@@ -207,3 +207,40 @@ def test_the_torus_row_does_not_call_size_x_the_outer_diameter():
     assert "outer" not in row, "size.x is the RING diameter, not the outer one"
     prose = " ".join(PAGE.read_text(encoding="utf-8").split())
     assert "size.x + size.z" in prose, "the page must state the real width"
+
+# --------------------------------------------------------------------------
+# The v2 caps: the page must READ them, not restate them
+# --------------------------------------------------------------------------
+
+
+def test_the_page_states_the_v2_caps_the_validator_enforces(prose):
+    """Checked SENTENCE BY SENTENCE, not as a bare substring.
+
+    "4" and "8" both appear elsewhere on this page — in the cart's mesh counts
+    — so a substring sweep would pass on a page that stated the wrong limit.
+    The number is read out of the clause that makes the claim.
+    """
+    from lib import sculptor
+
+    claims = {
+        "nest at most": sculptor.MAX_DEPTH,
+        "holds at most": sculptor.MAX_DEFS,
+    }
+    for phrase, expected in claims.items():
+        assert phrase in prose, f"the page no longer states {phrase!r}"
+        clause = prose.split(phrase, 1)[1][:40]
+        digits = "".join(c if c.isdigit() else " " for c in clause).split()
+        assert digits, f"no number after {phrase!r}"
+        assert int(digits[0]) == expected, (
+            f"the page says {digits[0]} after {phrase!r}; the validator "
+            f"enforces {expected}"
+        )
+
+
+def test_the_page_states_the_part_ceiling_counts_leaves(prose):
+    """The number is unchanged from v1 and its MEANING is not — a reader who
+    thinks 28 counts entries will be surprised by a refusal."""
+    from lib import sculptor
+
+    assert str(sculptor.MAX_PARTS) in prose
+    assert "after expansion" in prose.lower()
