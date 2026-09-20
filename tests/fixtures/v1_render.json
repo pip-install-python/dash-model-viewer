@@ -1,0 +1,1523 @@
+{
+ "brazier": {
+  "bounds": [
+   [
+    [
+     -0.45,
+     -0.225,
+     -0.45
+    ],
+    [
+     0.45,
+     0.225,
+     0.45
+    ]
+   ],
+   [
+    [
+     -0.07,
+     -0.3,
+     -0.07
+    ],
+    [
+     0.07,
+     0.3,
+     0.07
+    ]
+   ],
+   [
+    [
+     -0.25,
+     -0.04,
+     -0.25
+    ],
+    [
+     0.25,
+     0.04,
+     0.25
+    ]
+   ],
+   [
+    [
+     -0.25,
+     -0.25,
+     -0.25
+    ],
+    [
+     0.25,
+     0.25,
+     0.25
+    ]
+   ],
+   [
+    [
+     -0.15,
+     -0.275,
+     -0.15
+    ],
+    [
+     0.15,
+     0.275,
+     0.15
+    ]
+   ]
+  ],
+  "materials": [
+   {
+    "doubleSided": true,
+    "name": "bowl",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.042311410620809675,
+      0.027320891639074894,
+      0.019382360956935723,
+      1.0
+     ],
+     "metallicFactor": 0.4,
+     "roughnessFactor": 0.6
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "stem",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.042311410620809675,
+      0.027320891639074894,
+      0.019382360956935723,
+      1.0
+     ],
+     "metallicFactor": 0.4,
+     "roughnessFactor": 0.6
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "foot",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.042311410620809675,
+      0.027320891639074894,
+      0.019382360956935723,
+      1.0
+     ],
+     "metallicFactor": 0.4,
+     "roughnessFactor": 0.6
+    }
+   },
+   {
+    "doubleSided": true,
+    "emissiveFactor": [
+     1.0,
+     0.1946178304415758,
+     0.046665086336880095
+    ],
+    "name": "embers",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      1.0,
+      0.1946178304415758,
+      0.046665086336880095,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.5
+    }
+   },
+   {
+    "doubleSided": true,
+    "emissiveFactor": [
+     1.0,
+     0.5332764040105052,
+     0.1119324278369056
+    ],
+    "name": "flame",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      1.0,
+      0.5332764040105052,
+      0.1119324278369056,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.4
+    }
+   }
+  ],
+  "mesh_count": 5,
+  "nodes": [
+   {
+    "mesh": 0,
+    "name": "bowl",
+    "rotation": [
+     1.0,
+     0.0,
+     0.0,
+     6.123233995736766e-17
+    ],
+    "translation": [
+     0.0,
+     0.55,
+     0.0
+    ]
+   },
+   {
+    "mesh": 1,
+    "name": "stem",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     0.3,
+     0.0
+    ]
+   },
+   {
+    "mesh": 2,
+    "name": "foot",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     0.04,
+     0.0
+    ]
+   },
+   {
+    "mesh": 3,
+    "name": "embers",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     0.62,
+     0.0
+    ]
+   },
+   {
+    "mesh": 4,
+    "name": "flame",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     1.0,
+     0.0
+    ]
+   }
+  ],
+  "triangles": 1104,
+  "vertex_counts": [
+   76,
+   102,
+   102,
+   425,
+   76
+  ]
+ },
+ "colonnade": {
+  "bounds": [
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -0.08,
+     -0.65,
+     -0.08
+    ],
+    [
+     0.08,
+     0.65,
+     0.08
+    ]
+   ],
+   [
+    [
+     -2.0,
+     0.0,
+     -2.0
+    ],
+    [
+     2.0,
+     0.0,
+     2.0
+    ]
+   ],
+   [
+    [
+     -1.8900000000000001,
+     -0.09,
+     -1.8900000000000001
+    ],
+    [
+     1.8900000000000001,
+     0.09,
+     1.8900000000000001
+    ]
+   ],
+   [
+    [
+     -0.5,
+     -0.12,
+     -0.5
+    ],
+    [
+     0.5,
+     0.12,
+     0.5
+    ]
+   ],
+   [
+    [
+     -0.25,
+     -0.35,
+     -0.25
+    ],
+    [
+     0.25,
+     0.35,
+     0.25
+    ]
+   ]
+  ],
+  "materials": [
+   {
+    "doubleSided": true,
+    "name": "column0",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.1946178304415758,
+      0.2581828529215958,
+      0.31854677812509186,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column1",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.10702310297826761,
+      0.14702726649759498,
+      0.18782077230067787,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column2",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.32314320911295075,
+      0.386429433787049,
+      0.4396571738409188,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column3",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.06480326669290577,
+      0.09084171118340768,
+      0.11443537382697373,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column4",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.1946178304415758,
+      0.2581828529215958,
+      0.31854677812509186,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column5",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.10702310297826761,
+      0.14702726649759498,
+      0.18782077230067787,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column6",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.32314320911295075,
+      0.386429433787049,
+      0.4396571738409188,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column7",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.06480326669290577,
+      0.09084171118340768,
+      0.11443537382697373,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column8",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.1946178304415758,
+      0.2581828529215958,
+      0.31854677812509186,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column9",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.10702310297826761,
+      0.14702726649759498,
+      0.18782077230067787,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column10",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.32314320911295075,
+      0.386429433787049,
+      0.4396571738409188,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column11",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.06480326669290577,
+      0.09084171118340768,
+      0.11443537382697373,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column12",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.1946178304415758,
+      0.2581828529215958,
+      0.31854677812509186,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column13",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.10702310297826761,
+      0.14702726649759498,
+      0.18782077230067787,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column14",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.32314320911295075,
+      0.386429433787049,
+      0.4396571738409188,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column15",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.06480326669290577,
+      0.09084171118340768,
+      0.11443537382697373,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column16",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.1946178304415758,
+      0.2581828529215958,
+      0.31854677812509186,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column17",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.10702310297826761,
+      0.14702726649759498,
+      0.18782077230067787,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column18",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.32314320911295075,
+      0.386429433787049,
+      0.4396571738409188,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column19",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.06480326669290577,
+      0.09084171118340768,
+      0.11443537382697373,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column20",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.1946178304415758,
+      0.2581828529215958,
+      0.31854677812509186,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column21",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.10702310297826761,
+      0.14702726649759498,
+      0.18782077230067787,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column22",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.32314320911295075,
+      0.386429433787049,
+      0.4396571738409188,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "column23",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.06480326669290577,
+      0.09084171118340768,
+      0.11443537382697373,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.7
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "floor",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.043735029256973465,
+      0.05612849004960009,
+      0.06480326669290577,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.9
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "ring",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.32314320911295075,
+      0.386429433787049,
+      0.4396571738409188,
+      1.0
+     ],
+     "metallicFactor": 0.6,
+     "roughnessFactor": 0.35
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "plinth",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.028426039504420793,
+      0.03560131487502034,
+      0.03954623527673284,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.85
+    }
+   },
+   {
+    "doubleSided": true,
+    "name": "finial",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.5840784178911641,
+      0.6375968739940326,
+      0.6724431569576875,
+      1.0
+     ],
+     "metallicFactor": 0.3,
+     "roughnessFactor": 0.4
+    }
+   }
+  ],
+  "mesh_count": 28,
+  "nodes": [
+   {
+    "mesh": 0,
+    "name": "column0",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     1.6,
+     0.65,
+     0.0
+    ]
+   },
+   {
+    "mesh": 1,
+    "name": "column1",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     1.545,
+     0.65,
+     0.414
+    ]
+   },
+   {
+    "mesh": 2,
+    "name": "column2",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     1.386,
+     0.65,
+     0.8
+    ]
+   },
+   {
+    "mesh": 3,
+    "name": "column3",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     1.131,
+     0.65,
+     1.131
+    ]
+   },
+   {
+    "mesh": 4,
+    "name": "column4",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.8,
+     0.65,
+     1.386
+    ]
+   },
+   {
+    "mesh": 5,
+    "name": "column5",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.414,
+     0.65,
+     1.545
+    ]
+   },
+   {
+    "mesh": 6,
+    "name": "column6",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     0.65,
+     1.6
+    ]
+   },
+   {
+    "mesh": 7,
+    "name": "column7",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -0.414,
+     0.65,
+     1.545
+    ]
+   },
+   {
+    "mesh": 8,
+    "name": "column8",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -0.8,
+     0.65,
+     1.386
+    ]
+   },
+   {
+    "mesh": 9,
+    "name": "column9",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -1.131,
+     0.65,
+     1.131
+    ]
+   },
+   {
+    "mesh": 10,
+    "name": "column10",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -1.386,
+     0.65,
+     0.8
+    ]
+   },
+   {
+    "mesh": 11,
+    "name": "column11",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -1.545,
+     0.65,
+     0.414
+    ]
+   },
+   {
+    "mesh": 12,
+    "name": "column12",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -1.6,
+     0.65,
+     0.0
+    ]
+   },
+   {
+    "mesh": 13,
+    "name": "column13",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -1.545,
+     0.65,
+     -0.414
+    ]
+   },
+   {
+    "mesh": 14,
+    "name": "column14",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -1.386,
+     0.65,
+     -0.8
+    ]
+   },
+   {
+    "mesh": 15,
+    "name": "column15",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -1.131,
+     0.65,
+     -1.131
+    ]
+   },
+   {
+    "mesh": 16,
+    "name": "column16",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -0.8,
+     0.65,
+     -1.386
+    ]
+   },
+   {
+    "mesh": 17,
+    "name": "column17",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -0.414,
+     0.65,
+     -1.545
+    ]
+   },
+   {
+    "mesh": 18,
+    "name": "column18",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     -0.0,
+     0.65,
+     -1.6
+    ]
+   },
+   {
+    "mesh": 19,
+    "name": "column19",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.414,
+     0.65,
+     -1.545
+    ]
+   },
+   {
+    "mesh": 20,
+    "name": "column20",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.8,
+     0.65,
+     -1.386
+    ]
+   },
+   {
+    "mesh": 21,
+    "name": "column21",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     1.131,
+     0.65,
+     -1.131
+    ]
+   },
+   {
+    "mesh": 22,
+    "name": "column22",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     1.386,
+     0.65,
+     -0.8
+    ]
+   },
+   {
+    "mesh": 23,
+    "name": "column23",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     1.545,
+     0.65,
+     -0.414
+    ]
+   },
+   {
+    "mesh": 24,
+    "name": "floor",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "mesh": 25,
+    "name": "ring",
+    "rotation": [
+     0.7071067811865475,
+     0.0,
+     0.0,
+     0.7071067811865476
+    ],
+    "translation": [
+     0.0,
+     1.32,
+     0.0
+    ]
+   },
+   {
+    "mesh": 26,
+    "name": "plinth",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     0.12,
+     0.0
+    ]
+   },
+   {
+    "mesh": 27,
+    "name": "finial",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     1.7,
+     0.0
+    ]
+   }
+  ],
+  "triangles": 3414,
+  "vertex_counts": [
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   102,
+   4,
+   561,
+   24,
+   76
+  ]
+ },
+ "lighthouse": {
+  "bounds": [
+   [
+    [
+     -0.2,
+     -1.0,
+     -0.2
+    ],
+    [
+     0.2,
+     1.0,
+     0.2
+    ]
+   ],
+   [
+    [
+     -0.09,
+     -0.09,
+     -0.09
+    ],
+    [
+     0.09,
+     0.09,
+     0.09
+    ]
+   ]
+  ],
+  "materials": [
+   {
+    "doubleSided": true,
+    "name": "tower",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      0.8069522576692516,
+      0.7758222183174236,
+      0.7156935005064807,
+      1.0
+     ],
+     "metallicFactor": 0.0,
+     "roughnessFactor": 0.8
+    }
+   },
+   {
+    "doubleSided": true,
+    "emissiveFactor": [
+     1.0,
+     0.5332764040105052,
+     0.1119324278369056
+    ],
+    "name": "lamp",
+    "pbrMetallicRoughness": {
+     "baseColorFactor": [
+      1.0,
+      0.5332764040105052,
+      0.1119324278369056,
+      1.0
+     ],
+     "metallicFactor": 0.1,
+     "roughnessFactor": 0.3
+    }
+   }
+  ],
+  "mesh_count": 2,
+  "nodes": [
+   {
+    "mesh": 0,
+    "name": "tower",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     1.0,
+     0.0
+    ]
+   },
+   {
+    "mesh": 1,
+    "name": "lamp",
+    "rotation": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "translation": [
+     0.0,
+     2.1,
+     0.0
+    ]
+   }
+  ],
+  "triangles": 864,
+  "vertex_counts": [
+   102,
+   425
+  ]
+ }
+}

@@ -32,13 +32,23 @@ from lib import glb, manifest, overlap, sculptor, texture
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SAMPLES = REPO / "docs" / "scene-manifest" / "samples"
 
-#: The v1 output contract, pinned as bytes. These predate v2 and must survive
-#: it — the whole point of a version number is that old files are unaffected.
-V1_HASHES = {
-    "lighthouse.json": "d5ef3b77d0b3b834",
-    "colonnade.json": "4b9d0098f0cfe86e",
-    "brazier.json": "64a66676132d4a6a",
-}
+#: The v1 output contract. These samples predate v2 and must survive it — the
+#: whole point of a version number is that old files are unaffected.
+#:
+#: NOT A BYTE HASH, AND THE FIRST VERSION OF THIS WAS. A SHA-256 of the `.glb`
+#: passed here and failed on every CI leg, because it encodes the machine's
+#: libm: the geometry builders call `cos`/`sin`, and MEASURED ON THESE SAMPLES
+#: 22% of the float64 values that reach the file sit within one ULP of a
+#: float32 rounding boundary. Perturbing `math.cos`/`math.sin` by a single ULP
+#: changes all three digests — so the digest was a fact about macOS, not about
+#: the renderer. The contract is recorded structurally instead, and compared
+#: with a tolerance far below anything a real change could hide in.
+V1_FIXTURE = REPO / "tests" / "fixtures" / "v1_render.json"
+
+#: Tolerance for the structural comparison. 1e-6 m is a thousandth of a
+#: millimetre — orders of magnitude tighter than any change worth catching,
+#: and orders of magnitude looser than a last-bit difference in `cos`.
+TOLERANCE = 1e-6
 
 
 def _load(name):
@@ -221,12 +231,88 @@ def test_a_child_is_carried_by_its_parents_position_and_rotation():
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name,digest", sorted(V1_HASHES.items()))
-def test_a_v1_manifest_still_renders_the_same_bytes(name, digest):
-    """The version number's entire promise. If this fails, every .glb anyone
-    exported before v2 has silently changed."""
-    data = manifest.render(_load(name))[0]
-    assert hashlib.sha256(data).hexdigest()[:16] == digest
+def _close(got, want, path=""):
+    """Recursive comparison with a tolerance, returning the first mismatch.
+
+    Written out rather than reached for from a library because the failure
+    message has to name WHERE — "the sculpture changed" is useless; "node 17's
+    translation moved on y" is actionable.
+    """
+    if isinstance(want, dict):
+        if not isinstance(got, dict) or set(got) != set(want):
+            return f"{path}: keys differ"
+        for key in want:
+            bad = _close(got[key], want[key], f"{path}.{key}")
+            if bad:
+                return bad
+    elif isinstance(want, list):
+        if not isinstance(got, list) or len(got) != len(want):
+            return f"{path}: length {len(got) if isinstance(got, list) else '?'} != {len(want)}"
+        for i, item in enumerate(want):
+            bad = _close(got[i], item, f"{path}[{i}]")
+            if bad:
+                return bad
+    elif isinstance(want, bool) or not isinstance(want, (int, float)):
+        if got != want:
+            return f"{path}: {got!r} != {want!r}"
+    elif abs(float(got) - float(want)) > TOLERANCE:
+        return f"{path}: {got} != {want}"
+    return None
+
+
+def _summary(data):
+    """What the file MEANS, in portable terms. Mirrors the fixture writer."""
+    g = _gltf(data)
+    return {
+        "nodes": [
+            {"name": n["name"], "mesh": n["mesh"],
+             "translation": n.get("translation", [0.0, 0.0, 0.0]),
+             "rotation": n.get("rotation", [0.0, 0.0, 0.0, 1.0])}
+            for n in g["nodes"]
+        ],
+        "materials": g["materials"],
+        "mesh_count": len(g["meshes"]),
+        "vertex_counts": [
+            g["accessors"][m["primitives"][0]["attributes"]["POSITION"]]["count"]
+            for m in g["meshes"]
+        ],
+        "bounds": [[a["min"], a["max"]] for a in g["accessors"] if "min" in a],
+        "triangles": sum(g["accessors"][p["indices"]]["count"] // 3
+                         for m in g["meshes"] for p in m["primitives"]),
+    }
+
+
+def test_the_v1_fixture_is_not_empty():
+    """A sweep over nothing is the same green as a sweep that found nothing."""
+    fixture = json.loads(V1_FIXTURE.read_text(encoding="utf-8"))
+    assert set(fixture) == {"lighthouse", "colonnade", "brazier"}
+    assert sum(len(v["nodes"]) for v in fixture.values()) == 35
+
+
+@pytest.mark.parametrize("name", ["lighthouse", "colonnade", "brazier"])
+def test_a_v1_manifest_still_renders_the_same_sculpture(name):
+    """The version number's entire promise. If this fails, every sculpture
+    anyone exported before v2 has silently changed.
+
+    Structural, not byte-wise — see V1_FIXTURE for why the byte version was
+    wrong. Every node's placement, every material, every vertex and triangle
+    count, and every mesh's bounding box, to a millionth of a metre.
+    """
+    fixture = json.loads(V1_FIXTURE.read_text(encoding="utf-8"))[name]
+    got = _summary(manifest.render(_load(f"{name}.json"))[0])
+    bad = _close(got, fixture, name)
+    assert bad is None, bad
+
+
+@pytest.mark.parametrize("name", ["lighthouse", "colonnade", "brazier", "cart"])
+def test_rendering_is_deterministic_within_a_process(name):
+    """The byte-identity that IS true and IS needed: export, re-import and
+    re-render has to produce the same file, or the round trip on
+    /scene-manifest is an approximation rather than an identity."""
+    m = _load(f"{name}.json")
+    first = manifest.render(m)[0]
+    second = manifest.render(manifest.loads(manifest.dumps(m)))[0]
+    assert hashlib.sha256(first).digest() == hashlib.sha256(second).digest()
 
 
 def test_composing_with_the_identity_preserves_negative_zero():
