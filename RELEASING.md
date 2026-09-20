@@ -67,6 +67,12 @@ design, because `model-viewer` waits for visibility. The walk is not optional
 and is not replaceable by a test.
 
 - [ ] The walk is completed on a desktop browser in a **foreground** tab
+- [ ] The walk runs the **dev server** (`python run.py`, which sets
+      `debug=True`) with the browser console open. Dash's renderer validates
+      the callback graph only with dev tools on, and that validation is what
+      caught the duplicate-output defect that every server-side check —
+      the suite, flake8, the fresh-app sweeps and the seat's mirror — passed
+      on. Production boots gunicorn and is unaffected by the flag.
 - [ ] The AR section is completed on a **real phone**, and on Android
       specifically AR is confirmed to enter via **WebXR** — a fallback to
       scene-viewer would mask the exact regression the 1.0.0 AR fix prevents
