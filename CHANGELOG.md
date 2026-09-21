@@ -19,6 +19,27 @@ at the end of this entry.
 
 ### Fixed
 
+- **A generated sculpture's manifest was refused by its own importer, and the
+  page said nothing.** `lib/sculptor` CLAMPED every field while building —
+  emissive strength to 0–1, roughness to 0.05–1.0, size and position to their
+  bounds, and it accepted a colour written without its `#` — while
+  `manifest.from_scene` stored the model's RAW values, which `lib/manifest`
+  then refused. A sculpture containing a flame at `emissive_strength: 3.0` (a
+  value the system prompt's own worked example used) drew perfectly and
+  produced a manifest every consumer of the store rejected. **One swallowed
+  `ManifestError` produced three unrelated-looking symptoms**: the texture
+  switch fell back to the untextured render *under a note reading "Draped on
+  screen only"*, the `.glb` button did nothing, and the manifest button did
+  nothing. The clamps now live in exactly one place — `sculptor.normalise_part`
+  — which the builder reads its numbers from and which `from_scene` stores, so
+  a stored manifest is valid by construction; a test renders both paths and
+  compares bytes for every out-of-range value a model can emit. And nothing is
+  swallowed: a refused render or download now shows the importer's own message,
+  naming the field and the bound it broke, instead of returning `no_update`
+  (which is indistinguishable from a button that does nothing). The same
+  surfacing is applied to [Generative 3D](/generative-3d), which had the
+  identical silence.
+
 - **A stale tab no longer polls a 500 for ever.** Observed on this host: a tab
   left open on `/sculpt-from-image` across a restart posted a callback id the
   running server no longer had, and Dash answered `500` to every tick — at

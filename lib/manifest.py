@@ -552,13 +552,26 @@ def dumps(manifest: Dict[str, Any]) -> str:
 
 def from_scene(scene: Dict[str, Any], provenance: Dict[str, Any] | None = None
                ) -> Dict[str, Any]:
-    """A model's raw scene dict -> a versioned manifest.
+    """A model's raw scene dict -> a versioned manifest that is VALID.
 
     The model's own output carries no version — the schema does not ask for one
     — so it is stamped here, which is the only place that knows it.
+
+    AND THE PARTS ARE NORMALISED, which is the half that was missing. This
+    stored the model's RAW values while the builder CLAMPED them, so a
+    sculpture that rendered perfectly could produce a manifest the importer
+    refused — a flame at `emissive_strength: 3.0`, a polished lighter at
+    `roughness: 0.02`, a colour written without its `#`. Every consumer of the
+    store then failed at once: the texture switch fell back to the untextured
+    render under a note claiming it had draped, and both downloads returned
+    `no_update`, which reads as a button that does nothing.
+
+    `sculptor.normalise_part` is the single place the clamps live, and the
+    builder reads its numbers from there too, so what is stored is exactly
+    what was drawn.
     """
-    out: Dict[str, Any] = {"version": FLAT_VERSION,
-                           "parts": scene.get("parts") or []}
+    parts, _notes = sculptor.normalise_scene(scene)
+    out: Dict[str, Any] = {"version": FLAT_VERSION, "parts": parts}
     for field in ("name", "notes"):
         if scene.get(field):
             out[field] = str(scene[field])

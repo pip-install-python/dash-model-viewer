@@ -313,6 +313,8 @@ def show_estimate(model):
 
 @callback(
     Output("g3-dl-json", "data"),
+    Output("g3-status", "children", allow_duplicate=True),
+    Output("g3-status", "hide", allow_duplicate=True),
     Input("g3-save-json", "n_clicks"),
     State("g3-manifest", "data"),
     prevent_initial_call=True,
@@ -325,17 +327,22 @@ def save_manifest(_clicks, stored):
     of keeping it rather than only the `.glb`.
     """
     if not stored:
-        return no_update
+        return no_update, no_update, no_update
     try:
         m = manifest.validate(stored)
-    except manifest.ManifestError:
-        return no_update
-    return {"content": manifest.dumps(m),
-             "filename": manifest.filename(m, "json")}
+    except manifest.ManifestError as exc:
+        # A button that does nothing is the worst available report — see
+        # /sculpt-from-image, where this silence hid a real defect for a day.
+        return no_update, f"Cannot save this manifest — {exc}", False
+    return ({"content": manifest.dumps(m),
+             "filename": manifest.filename(m, "json")},
+            no_update, no_update)
 
 
 @callback(
     Output("g3-dl-glb", "data"),
+    Output("g3-status", "children", allow_duplicate=True),
+    Output("g3-status", "hide", allow_duplicate=True),
     Input("g3-save-glb", "n_clicks"),
     State("g3-manifest", "data"),
     prevent_initial_call=True,
@@ -352,10 +359,10 @@ def save_glb(_clicks, stored):
     worth testing.
     """
     if not stored:
-        return no_update
+        return no_update, no_update, no_update
     try:
         m = manifest.validate(stored)
         data, _notes, _used = manifest.render(m)
-    except manifest.ManifestError:
-        return no_update
-    return dcc.send_bytes(data, manifest.filename(m, "glb"))
+    except (manifest.ManifestError, ValueError) as exc:
+        return no_update, f"Cannot build this .glb — {exc}", False
+    return dcc.send_bytes(data, manifest.filename(m, "glb")), no_update, no_update

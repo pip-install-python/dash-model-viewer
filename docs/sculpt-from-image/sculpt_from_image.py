@@ -363,8 +363,20 @@ def retexture(mode, stored, image):
     png = texture_png(image) if mode in ("preview", "include") else None
     try:
         data, _notes, _used = manifest.render(stored, texture_png=png)
-    except (manifest.ManifestError, ValueError):
-        return no_update, _note(mode, bool(image), True), label
+    except (manifest.ManifestError, ValueError) as exc:
+        # NEVER SILENTLY. This branch used to return the ordinary note, so a
+        # refused render left the previous sculpture on screen under the words
+        # "Draped on screen only" — the page claiming something it had not
+        # done. The importer's message names the field and its bound, so it is
+        # shown verbatim rather than summarised away.
+        return no_update, f"Could not render this sculpture — {exc}", label
+    if mode in ("preview", "include") and image and png is None:
+        # An image WAS uploaded and could not be prepared. "Upload an image"
+        # would send the reader to do the thing they already did.
+        return (sculptor.to_data_url(data),
+                "That image could not be read, so nothing was draped — "
+                "PNG or JPEG, under the size cap.",
+                label)
     return (sculptor.to_data_url(data),
             _note(mode, png is not None, True),
             label)
@@ -372,6 +384,8 @@ def retexture(mode, stored, image):
 
 @callback(
     Output("si-dl-json", "data"),
+    Output("si-status", "children", allow_duplicate=True),
+    Output("si-status", "hide", allow_duplicate=True),
     Input("si-save-json", "n_clicks"),
     State("si-manifest", "data"),
     prevent_initial_call=True,
@@ -384,17 +398,22 @@ def save_manifest(_clicks, stored):
     of keeping it rather than only the `.glb`.
     """
     if not stored:
-        return no_update
+        return no_update, no_update, no_update
     try:
         m = manifest.validate(stored)
-    except manifest.ManifestError:
-        return no_update
-    return {"content": manifest.dumps(m),
-             "filename": manifest.filename(m, "json")}
+    except manifest.ManifestError as exc:
+        # A button that does nothing is the worst available report. The
+        # importer's message names the field; show it.
+        return no_update, f"Cannot save this manifest — {exc}", False
+    return ({"content": manifest.dumps(m),
+             "filename": manifest.filename(m, "json")},
+            no_update, no_update)
 
 
 @callback(
     Output("si-dl-glb", "data"),
+    Output("si-status", "children", allow_duplicate=True),
+    Output("si-status", "hide", allow_duplicate=True),
     Input("si-save-glb", "n_clicks"),
     State("si-manifest", "data"),
     State("si-texture", "value"),
@@ -419,14 +438,14 @@ def save_glb(_clicks, stored, mode, image):
     worth testing.
     """
     if not stored:
-        return no_update
+        return no_update, no_update, no_update
     png = texture_png(image) if mode == "include" else None
     try:
         m = manifest.validate(stored)
         data, _notes, _used = manifest.render(m, texture_png=png)
-    except (manifest.ManifestError, ValueError):
-        return no_update
+    except (manifest.ManifestError, ValueError) as exc:
+        return no_update, f"Cannot build this .glb — {exc}", False
     stem = manifest.filename(m, "glb")
     if png is not None:
         stem = stem[:-4] + "-textured.glb"
-    return dcc.send_bytes(data, stem)
+    return dcc.send_bytes(data, stem), no_update, no_update

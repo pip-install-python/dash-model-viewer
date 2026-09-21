@@ -49,8 +49,23 @@ SCENE = {
 GLB_EXTRA = {"si": ("off", None), "g3": ()}
 
 
+def _first(returned):
+    """Both download callbacks now return (payload, message, hide).
+
+    They gained the message outputs so a refusal is SHOWN rather than
+    swallowed into `no_update` — which is how one invalid stored manifest
+    presented as "the button does nothing". Tests that only care about the
+    file unwrap here.
+    """
+    return returned[0] if isinstance(returned, tuple) else returned
+
+
 def _save_glb(page, prefix, clicks, stored):
-    return page.save_glb(clicks, stored, *GLB_EXTRA[prefix])
+    return _first(page.save_glb(clicks, stored, *GLB_EXTRA[prefix]))
+
+
+def _save_manifest(page, clicks, stored):
+    return _first(page.save_manifest(clicks, stored))
 
 
 def _finished(prefix):
@@ -93,7 +108,7 @@ def test_the_exported_manifest_re_renders_the_SAME_bytes(prefix):
     """THE POINT OF ITEM 2. Export, re-import, and the sculpture is identical —
     so the file is a way back to the object, not a souvenir."""
     page, stored = _finished(prefix)
-    exported = page.save_manifest(1, stored)["content"]
+    exported = _save_manifest(page, 1, stored)["content"]
     glb_now = base64.b64decode(_save_glb(page, prefix, 1, stored)["content"])
     glb_from_file, _notes, _used = manifest.render(manifest.loads(exported))
     assert glb_from_file == glb_now
@@ -112,8 +127,8 @@ def test_the_glb_download_is_a_real_glb(prefix):
 @pytest.mark.parametrize("prefix", PAGES)
 def test_the_manifest_download_is_byte_stable(prefix):
     page, stored = _finished(prefix)
-    first = page.save_manifest(1, stored)["content"]
-    second = page.save_manifest(2, stored)["content"]
+    first = _save_manifest(page, 1, stored)["content"]
+    second = _save_manifest(page, 2, stored)["content"]
     assert first == second
     assert first == manifest.dumps(manifest.loads(first))
 
@@ -153,7 +168,7 @@ def test_no_download_before_a_build(prefix):
     from dash import no_update
 
     page, _stored = _finished(prefix)
-    assert page.save_manifest(1, None) is no_update
+    assert _save_manifest(page, 1, None) is no_update
     assert _save_glb(page, prefix, 1, None) is no_update
 
 
@@ -163,8 +178,15 @@ def test_a_corrupt_store_does_not_raise_into_the_download(prefix):
 
     page, _stored = _finished(prefix)
     broken = {"version": 1, "parts": [{"shape": "nope"}]}
-    assert page.save_manifest(1, broken) is no_update
-    assert _save_glb(page, prefix, 1, broken) is no_update
+    for returned in (page.save_manifest(1, broken),
+                     page.save_glb(1, broken, *GLB_EXTRA[prefix])):
+        payload, message, hidden = returned
+        assert payload is no_update, "no file may be produced from a bad store"
+        # AND THE READER IS TOLD. Returning only `no_update` here is what made
+        # an invalid stored manifest look like a button that does nothing.
+        assert isinstance(message, str) and message, "the refusal is not shown"
+        assert "parts[0]" in message, "the message must name the field"
+        assert hidden is False, "the message must be visible"
 
 
 @pytest.mark.parametrize("prefix", PAGES)

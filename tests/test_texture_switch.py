@@ -64,6 +64,14 @@ def _page():
     return importlib.import_module("docs.sculpt-from-image.sculpt_from_image")
 
 
+def _download(page, clicks, stored, mode, image):
+    """save_glb returns (payload, message, hide) — it gained the message
+    outputs so a refused build is SHOWN instead of swallowed. Tests about the
+    file take the payload; the message has its own test."""
+    payload, _message, _hide = page.save_glb(clicks, stored, mode, image)
+    return payload
+
+
 # --------------------------------------------------------------------------
 # One image, once
 # --------------------------------------------------------------------------
@@ -224,7 +232,7 @@ def test_preview_shows_the_texture_but_downloads_without_it():
     assert "untextured" in label, "the button must say what it will hand over"
     assert "untextured" in note
 
-    payload = page.save_glb(1, scene, "preview", image)
+    payload = _download(page, 1, scene, "preview", image)
     assert base64.b64decode(payload["content"]) == manifest.render(scene)[0]
     assert payload["filename"].endswith(".glb")
     assert "-textured" not in payload["filename"]
@@ -235,7 +243,7 @@ def test_include_bakes_the_image_into_the_download():
     scene = _sample()
     image = _data_url(_image())
 
-    payload = page.save_glb(1, scene, "include", image)
+    payload = _download(page, 1, scene, "include", image)
     data = base64.b64decode(payload["content"])
     assert data != manifest.render(scene)[0]
     assert len(_gltf(data)["images"]) == 1
@@ -247,7 +255,7 @@ def test_include_bakes_the_image_into_the_download():
 def test_off_downloads_exactly_what_item_2_shipped():
     page = _page()
     scene = _sample()
-    payload = page.save_glb(1, scene, "off", _data_url(_image()))
+    payload = _download(page, 1, scene, "off", _data_url(_image()))
     assert base64.b64decode(payload["content"]) == manifest.render(scene)[0]
 
 
@@ -269,7 +277,7 @@ def test_a_corrupt_upload_leaves_the_page_standing():
     for bad in (None, "", "data:image/png;base64,!!!!", _data_url(b"not a png")):
         src, _note, _label = page.retexture("include", scene, bad)
         assert src is not None
-        payload = page.save_glb(1, scene, "include", bad)
+        payload = _download(page, 1, scene, "include", bad)
         assert base64.b64decode(payload["content"]) == manifest.render(scene)[0], (
             "an unusable image must fall back to the plain sculpture"
         )
@@ -303,7 +311,8 @@ def test_the_whole_switch_works_with_no_api_key():
         assert not os.environ.get(name), f"{name} is set — this proves nothing"
 
     page = _page()
-    payload = page.save_glb(1, _sample("lighthouse"), "include", _data_url(_image()))
+    payload = _download(page, 1, _sample("lighthouse"), "include",
+                        _data_url(_image()))
     assert base64.b64decode(payload["content"])[:4] == b"glTF"
 
 

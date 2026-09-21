@@ -438,6 +438,83 @@ def _colour(value: str) -> Tuple[float, float, float]:
     )
 
 
+#: What an unreadable colour becomes. Chosen so `_colour()` maps it to very
+#: nearly the linear fallback the builder already used, so normalising a part
+#: does not change how it is drawn.
+DEFAULT_COLOR = "#E1E1E5"
+
+
+def normalise_part(part: Any, index: int = 0) -> Optional[Dict[str, Any]]:
+    """A model's raw part -> one that is VALID BY CONSTRUCTION.
+
+    THE BUG THIS EXISTS FOR. The builder CLAMPED (`emissive_strength` to 0-1,
+    `roughness` to 0.05-1.0, and so on) while `manifest.from_scene` stored the
+    model's RAW values, and the importer REFUSES what the builder clamps. So a
+    sculpture containing a flame at `emissive_strength: 3.0` — which the
+    prompt's own worked example once used — rendered perfectly and produced a
+    manifest that every consumer of the store rejected. One swallowed
+    `ManifestError` then took out the texture switch and both downloads at
+    once, under a note that claimed the image had been draped.
+
+    Returns None when the shape is unknown, which is the one case the builder
+    drops rather than corrects.
+
+    THIS IS THE ONLY PLACE THE CLAMPS LIVE. The builder reads its numbers from
+    here and `from_scene` stores exactly these, so the two cannot disagree
+    again — which was the actual defect, not any individual bound.
+    """
+    if not isinstance(part, dict):
+        return None
+    shape = str(part.get("shape", "")).lower()
+    if shape not in SHAPES:
+        return None
+
+    size = part.get("size") or {}
+    pos = part.get("position") or {}
+    rot = part.get("rotation") or {}
+    match = _HEX.match(str(part.get("color") or "").strip())
+    return {
+        "name": str(part.get("name") or f"part{index}")[:48],
+        "shape": shape,
+        "size": {axis: _clamp(size.get(axis), 0.01, MAX_EXTENT, 0.5)
+                 for axis in ("x", "y", "z")},
+        "position": {axis: _clamp(pos.get(axis), -MAX_SCENE_RADIUS,
+                                  MAX_SCENE_RADIUS, 0.0)
+                     for axis in ("x", "y", "z")},
+        "rotation": {axis: _clamp(rot.get(axis), -360.0, 360.0, 0.0)
+                     for axis in ("x", "y", "z")},
+        # The '#' is added here because the builder accepted a bare "E8E4DC"
+        # and the importer refused it — the same class of divergence.
+        "color": f"#{match.group(1).upper()}" if match else DEFAULT_COLOR,
+        "metallic": _clamp(part.get("metallic"), 0.0, 1.0, 0.0),
+        "roughness": _clamp(part.get("roughness"), 0.05, 1.0, 0.8),
+        "emissive_strength": _clamp(part.get("emissive_strength"), 0.0, 1.0, 0.0),
+    }
+
+
+def normalise_scene(scene: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """Every part of a scene, normalised. Returns (parts, notes).
+
+    Truncates BEFORE dropping unknown shapes, which is the order `build()`
+    has always used — so the two select the same parts from an over-long
+    scene, not merely the same number of them.
+    """
+    raw = list(scene.get("parts") or [])
+    notes: List[str] = []
+    if len(raw) > MAX_PARTS:
+        notes.append(f"kept the first {MAX_PARTS} of {len(raw)} parts")
+        raw = raw[:MAX_PARTS]
+    parts: List[Dict[str, Any]] = []
+    for index, part in enumerate(raw):
+        clean = normalise_part(part, index)
+        if clean is None:
+            shape = str((part or {}).get("shape", "")).lower() if isinstance(part, dict) else ""
+            notes.append(f"dropped part {index} — unknown shape {shape!r}")
+            continue
+        parts.append(clean)
+    return parts, notes
+
+
 def _clamp(value: Any, low: float, high: float, default: float) -> float:
     try:
         return max(low, min(high, float(value)))
@@ -508,29 +585,32 @@ def build_placements(placements: List[Dict[str, Any]],
     shared_materials: Dict[str, glb.Material] = {}
     used = 0
     for i, placement in enumerate(placements):
-        part = placement["style"]
-        shape = str(part.get("shape", "")).lower()
-        if shape not in SHAPES:
-            notes.append(f"dropped part {i} — unknown shape {shape!r}")
+        # NORMALISED HERE, and nowhere else. `manifest.from_scene` stores the
+        # output of this same function, so what is drawn and what is stored
+        # cannot drift apart — see normalise_part.
+        part = normalise_part(placement["style"], i)
+        if part is None:
+            raw = placement["style"] if isinstance(placement["style"], dict) else {}
+            notes.append(
+                f"dropped part {i} — unknown shape "
+                f"{str(raw.get('shape', '')).lower()!r}"
+            )
             continue
 
-        size = part.get("size") or {}
-        w = _clamp(size.get("x"), 0.01, MAX_EXTENT, 0.5)
-        h = _clamp(size.get("y"), 0.01, MAX_EXTENT, 0.5)
-        d = _clamp(size.get("z"), 0.01, MAX_EXTENT, 0.5)
+        shape = part["shape"]
+        w, h, d = part["size"]["x"], part["size"]["y"], part["size"]["z"]
 
         share = placement.get("share")
-        name = str(placement.get("name") or f"part{i}")[:48]
+        name = str(placement.get("name") or part["name"])[:48]
         if share is not None and share in shared_materials:
             material = shared_materials[share]
         else:
-            emissive_strength = _clamp(part.get("emissive_strength"), 0.0, 1.0, 0.0)
-            colour = _colour(part.get("color", ""))
+            colour = _colour(part["color"])
             material = glb.Material(
                 base_color=colour,
-                metallic=_clamp(part.get("metallic"), 0.0, 1.0, 0.0),
-                roughness=_clamp(part.get("roughness"), 0.05, 1.0, 0.8),
-                emissive=tuple(c * emissive_strength for c in colour),
+                metallic=part["metallic"],
+                roughness=part["roughness"],
+                emissive=tuple(c * part["emissive_strength"] for c in colour),
                 name=name,
             )
             if share is not None:
