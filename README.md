@@ -121,6 +121,14 @@ def show_camera(camera):
     return f"orbit {camera['orbit']} · fov {camera['field_of_view']}"
 ```
 
+<br/>
+
+<a href="https://modelviewer.2plot.dev">
+  <img src="https://raw.githubusercontent.com/pip-install-python/dash-model-viewer/main/assets/github/Model-viewer-demo.gif" alt="A dash-model-viewer scene being dragged, lit and switched between material variants" width="880">
+</a>
+
+<br/>
+
 ## Documentation
 
 ### 📚 **[modelviewer.2plot.dev](https://modelviewer.2plot.dev)**
