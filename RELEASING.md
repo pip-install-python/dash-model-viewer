@@ -112,19 +112,46 @@ assert the bytes and the wiring; only a person can confirm the pixels.
 ### 5. The PyPI publisher — **the owner's, on pypi.org**
 
 Trusted publishing stores no token; PyPI verifies a short-lived OIDC token
-minted by GitHub for this repo, workflow and environment. For this project the
-publisher must be **created**, not confirmed: `dash-model-viewer` has a 0.0.1
-from 2025-04-17, uploaded before trusted publishing was set up here.
+minted by GitHub for this repo, workflow and environment.
 
-    pypi.org -> dash-model-viewer -> Publishing -> Add a new pending publisher
-      Owner:            pip-install-python
-      Repository:       dash-model-viewer
-      Workflow name:    release.yml
+**It is a TRUSTED PUBLISHER ON THE PROJECT, not a pending publisher**, and an
+earlier version of this section had that wrong in a way that wasted the
+owner's time. A *pending* publisher exists only for a name that is **not yet
+on PyPI**, and it lives under *Account settings → Publishing*.
+`dash-model-viewer` has been on PyPI since 0.0.1 (2025-04-17), so PyPI would
+refuse to create a pending publisher for it. The entry belongs to the project:
+
+    pypi.org -> Your projects -> dash-model-viewer -> Manage -> Publishing
+      -> Manage current publishers
+      Repository:       pip-install-python/dash-model-viewer
+      Workflow:         release.yml          (the FILE name)
       Environment name: pypi
 
-- [ ] The pending publisher exists
+- [x] **Confirmed configured, 2026-09-20.** The owner read the three values
+      off *Manage current publishers* and they match what
+      `.github/workflows/release.yml` claims: the `publish` job declares
+      `environment: name: pypi` and lives in `release.yml`.
 
-Until it does, the `publish` job fails with an opaque 403 and nothing uploads.
+**There is no way to check this without logging in.** The configuration is
+account-private and PyPI publishes no API for it. The only public signal
+concerns *past* uploads — `https://pypi.org/pypi/dash-model-viewer/json` shows
+0.0.1's two files with `attestations: false` and no provenance, which is what a
+token upload made before trusted publishing looks like, and says nothing about
+current configuration.
+
+**To exercise it without tagging**, run *Actions → Release → Run workflow* with
+`dry_run` ticked: it builds, verifies and performs the OIDC handshake against
+**TestPyPI**. That proves the workflow and the plumbing; it does not prove the
+pypi.org entry, which only a real tag does.
+
+**If it were missing, the failure is recoverable.** The `publish` job fails
+with an opaque 403 *after* build and verify have passed, so the tag stands and
+the artifacts already exist — configure the publisher and re-run the failed
+job. Worth knowing before the tag rather than after.
+
+Optional: the `pypi` environment accepts a **required reviewer** in repo
+settings, which puts a human approval between the tag and the upload. The
+workflow is written to work with or without it.
 
 ---
 
