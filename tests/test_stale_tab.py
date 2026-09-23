@@ -25,18 +25,21 @@ import subprocess
 
 import pytest
 
-from conftest import BROWSER_UA, in_fresh_app
+from conftest import in_fresh_app
 from lib import poll_guard, stale_tab
 
 needs_node = pytest.mark.skipif(shutil.which("node") is None, reason="no node")
 
-#: The BROWSER lane, named: the guard runs in a tab, and a bare test client
-#: would be read as a crawler (notes 70/74).
+#: Through conftest's `open_client`, so the lane matches the leg under test —
+#: Flask, Quart or FastAPI — and the request names a browser UA (the guard runs
+#: in a tab; a bare client would be read as a crawler, notes 70/74).
 _SERVED = (
-    "client = app.server.test_client()\n"
-    f"r = client.get('/_dash-dependencies', headers={{'User-Agent': {BROWSER_UA!r}}})\n"
-    "assert r.status_code == 200, r.status_code\n"
-    "print('RESULT:' + json.dumps(r.get_json()))\n"
+    "sys.path.insert(0, os.path.join(os.getcwd(), 'tests'))\n"
+    "from conftest import open_client\n"
+    "with open_client(app) as lane:\n"
+    "    r = lane.get('/_dash-dependencies')\n"
+    "assert r.status == 200, r.status\n"
+    "print('RESULT:' + json.dumps(json.loads(r.text)))\n"
 )
 
 

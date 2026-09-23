@@ -28,6 +28,7 @@ this is belt-and-braces. Same pattern as 2plotai and pip-docs+.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import os
 import sys
@@ -225,14 +226,20 @@ class Client:
         return Response(r.status_code, r.text, dict(r.headers))
 
 
-@pytest.fixture(scope="session")
-def client(app):
+@contextlib.contextmanager
+def open_client(app):
     """A test client for whichever backend is under test.
 
     FastAPI/Quart need the ASGI lifespan to have run: Dash registers its page
     catch-all from the startup event, so a client used outside the lifespan
     context 404s every non-root URL for reasons that have nothing to do with
     the code under test.
+
+    A context manager rather than only the fixture below, because a script run
+    by `in_fresh_app` needs the same lane selection and has no fixtures — the
+    first stale-tab fixture reached for `app.server.test_client()` directly,
+    which exists on Flask only, and errored all 33 of its tests on the FastAPI
+    leg (ops' seat mirror, 101b65a).
     """
     kind = backend()
     if kind == "flask":
@@ -252,6 +259,13 @@ def client(app):
             yield Client(raw, "httpx")
     else:  # pragma: no cover - resolve_backend() rejects anything else
         raise RuntimeError(f"unsupported DASH_BACKEND={kind!r}")
+
+
+@pytest.fixture(scope="session")
+def client(app):
+    """`open_client`, for the in-process suite."""
+    with open_client(app) as c:
+        yield c
 
 
 @pytest.fixture(scope="session")
