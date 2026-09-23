@@ -232,10 +232,26 @@ def test_no_two_callbacks_declare_the_same_qualified_output():
         "    for o in outs:\n"
         "        seen[o].append(writer)\n"
         "print('RESULT:' + json.dumps({'total': len(seen),\n"
+        "      'registered': len(app._callback_list),\n"
+        "      'mapped': len(app.callback_map),\n"
         "      'dupes': {o: w for o, w in seen.items() if len(w) > 1}}))\n"
     )
     assert got["total"] > 100, (
         f"only {got['total']} outputs seen — the sweep is not reading the app"
+    )
+    # THE MAP CANNOT SEE A TOTAL COLLISION, and this test read only the map.
+    # `callback_map` is a dict keyed by the qualified id, so two callbacks
+    # whose ENTIRE id matches — same complete output set, same input list —
+    # silently overwrite: one simply vanishes. Measured by construction: three
+    # decorated callbacks, map 2, list 3, and the sweep above reports CLEAN.
+    # The registration LIST keeps both, so their lengths differing IS the
+    # signal. (Measured on the template today as 03f4afb; the partial overlap
+    # this test already caught — different compound keys sharing individual
+    # output ids — is the other half, and neither subsumes the other.)
+    assert got["registered"] == got["mapped"], (
+        f"{got['registered']} callbacks registered but only {got['mapped']} in "
+        f"the map — {got['registered'] - got['mapped']} were silently "
+        f"overwritten by an identical qualified output id"
     )
     assert not got["dupes"], (
         "two callbacks write the same qualified output; the renderer will "
@@ -260,3 +276,47 @@ def test_the_stale_guard_and_the_poll_do_not_share_an_input_list():
     poll_inputs = ["<Input `si-poll.n_intervals`>"]
     guard_inputs = poll_inputs + ["<Input `si-alive.data`>"]
     assert digest(poll_inputs) != digest(guard_inputs)
+
+
+def test_the_length_signal_actually_fires_on_a_total_collision():
+    """The negative control for the assertion above, built rather than mutated.
+
+    A total collision cannot be introduced into this app by editing one line —
+    it needs two callbacks whose ENTIRE qualified id matches — so the control
+    constructs a throwaway Dash app in a subprocess and measures both
+    structures. Without this, the length assertion is a line nobody has ever
+    seen fail.
+    """
+    got = in_fresh_app(
+        "import dash\n"
+        "from dash import Input, Output, State, html\n"
+        "sub = dash.Dash('collision', suppress_callback_exceptions=True)\n"
+        "sub.layout = html.Div([html.Button(id='b'), html.Div(id='t')])\n"
+        "@sub.callback(Output('t', 'children'), Input('b', 'n_clicks'))\n"
+        "def base(n): return 'base'\n"
+        "@sub.callback(Output('t', 'children', allow_duplicate=True),\n"
+        "              Input('b', 'n_clicks'), prevent_initial_call=True)\n"
+        "def a(n): return 'a'\n"
+        "@sub.callback(Output('t', 'children', allow_duplicate=True),\n"
+        "              Input('b', 'n_clicks'), State('t', 'id'),\n"
+        "              prevent_initial_call=True)\n"
+        "def c(n, _): return 'c'\n"
+        "sub._setup_server()\n"
+        "import collections\n"
+        "seen = collections.defaultdict(list)\n"
+        "for key in sub.callback_map:\n"
+        "    outs = key.strip('.').split('...') if key.startswith('..') else [key]\n"
+        "    for o in outs:\n"
+        "        seen[o].append(1)\n"
+        "print('RESULT:' + json.dumps({\n"
+        "    'registered': len(sub._callback_list),\n"
+        "    'mapped': len(sub.callback_map),\n"
+        "    'old_gate_dupes': sum(1 for v in seen.values() if len(v) > 1)}))\n"
+    )
+    assert got["registered"] == 3, "three callbacks were decorated"
+    assert got["mapped"] == 2, "the map silently dropped one"
+    assert got["old_gate_dupes"] == 0, (
+        "this is the point: counting output ids across the MAP reports a "
+        "clean graph, because the collision removed the evidence"
+    )
+    assert got["registered"] != got["mapped"], "the length signal is what sees it"
