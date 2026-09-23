@@ -6,10 +6,51 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-Nothing yet. 1.0.0 has not been published — PyPI still serves 0.0.1 — so the
-pre-release component review's changes are recorded under `[1.0.0]` below
-rather than here. Once 1.0.0 is tagged, anything further belongs in this
-section.
+Nothing yet.
+
+## [1.0.1] — unreleased
+
+### Fixed
+
+- **The vendored `<model-viewer>` no longer prints debug lines to every
+  visitor's console.** Upstream 4.3.1 itself shipped three `console.log`
+  calls in `lib/model-viewer-base.js` — `IntersectionObserver fired!
+  isIntersecting: …` on every visibility change, and `[$updateSource]
+  called! …` / `[$updateSource] BAILING OUT EARLY!` on every source update —
+  so every page with a viewer logged them in production. They are Google's,
+  not added in the 1.0.0 rebuild: the vendored file was upstream's
+  byte-for-byte less the sourcemap comment, checked against the npm
+  tarball's integrity hash. `scripts/vendor_model_viewer.py` now removes
+  exactly those three calls as its second documented transform, each an
+  exact match that must occur once, so a future version fails the re-vendor
+  loudly instead of shipping the logs or a half-edited bundle. Behaviour is
+  unchanged: the bail-out is upstream's lazy-loading and stays, as a bare
+  `return;`. The bundle is 243 bytes smaller (1,071,622 → 1,071,379) and
+  nothing else in it changed. **Not covered:** `configure(use_cdn=True)`
+  serves jsDelivr's unmodified upstream copy, which still logs.
+
+### Site
+
+These change the documentation site only; the wheel is unaffected.
+
+- **A tab left open across a deploy now says it is out of date, instead of
+  silently doing nothing.** Three times on this host a control appeared
+  broken while the code was fine — a switch, then the downloads. Dash fetches
+  the callback map once per tab, but page layouts arrive fresh on every
+  navigation, so after a restart or deploy new controls rendered against a map
+  that had never heard of them. The shell now records a fingerprint in tab
+  memory on first load and compares it on every in-app navigation: `/healthz`'s
+  `build` key (~150–300 B) where the platform sets one, and otherwise a sorted
+  fingerprint of the served `_dash-dependencies`. On a difference it shows the
+  poll guard's sentence, "This page is out of date — reload it." One small GET
+  per navigation; a probe that fails or reads empty says nothing. It cannot
+  rescue a tab older than itself. New in `lib/stale_tab.py`; ops' ruling,
+  SYNC-1.6.46 item 12's third half. The first spec ("baked at registration")
+  was measured unbuildable: 2 callbacks exist when the shell registers, 61 in
+  the served graph. `tests/test_callback_wiring.py` also now catches the
+  duplicate case its sweep was blind to — two callbacks with an identical
+  qualified id overwrite each other in `callback_map`, removing the evidence,
+  so the registration list and the map must now be the same length.
 
 ## [1.0.0] — 2026-08-21
 
@@ -56,25 +97,6 @@ at the end of this entry.
   state where server callbacks cannot. It cannot rescue a tab older than
   itself; what it prevents is the next deploy doing it again. New in
   `lib/poll_guard.py`.
-
-- **A tab left open across a deploy now says it is out of date, instead of
-  silently doing nothing.** Three times on this host a control appeared
-  broken while the code was fine — a switch, then the downloads. Dash fetches
-  the callback map once per tab, but page layouts arrive fresh on every
-  navigation, so after a restart or deploy new controls rendered against a map
-  that had never heard of them. The shell now records a fingerprint in tab
-  memory on first load and compares it on every in-app navigation: `/healthz`'s
-  `build` key (~150–300 B) where the platform sets one, and otherwise a sorted
-  fingerprint of the served `_dash-dependencies`. On a difference it shows the
-  poll guard's sentence, "This page is out of date — reload it." One small GET
-  per navigation; a probe that fails or reads empty says nothing. It cannot
-  rescue a tab older than itself. New in `lib/stale_tab.py`; ops' ruling,
-  SYNC-1.6.46 item 12's third half. The first spec ("baked at registration")
-  was measured unbuildable: 2 callbacks exist when the shell registers, 61 in
-  the served graph. `tests/test_callback_wiring.py` also now catches the
-  duplicate case its sweep was blind to — two callbacks with an identical
-  qualified id overwrite each other in `callback_map`, removing the evidence,
-  so the registration list and the map must now be the same length.
 
 - **`/generative-3d` recorded the wrong provenance in every file it exported.**
   Its poll declared `State("g3-model")` then `State("g3-prompt")` and received

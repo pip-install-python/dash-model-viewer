@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dash-model-viewer"
-version = "1.0.0"
+version = "1.0.1"
 description = "Embed interactive 3D models directly into your Dash applications with Augmented Reality (AR) support"
 authors = [{name = "pip-install-python", email = "pipinstallpython@gmail.com"}]
 readme = "README.md"

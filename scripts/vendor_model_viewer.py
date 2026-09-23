@@ -33,6 +33,21 @@ The alternatives were worse:
 Removing the comment costs a debugging affordance nobody has for a minified
 third-party bundle regardless, and `tests/test_components.py` asserts it stays
 removed.
+
+**Three debug `console.log` calls are removed (1.0.1).**
+
+Upstream 4.3.1 shipped them in `lib/model-viewer-base.js` (lines 263, 522, 525
+of the published package — Google's, not added here; verified against the npm
+tarball's integrity hash): `IntersectionObserver fired! isIntersecting: …` on
+every visibility change, and `[$updateSource] called! …` / `[$updateSource]
+BAILING OUT EARLY!` on every source update. Every page with a viewer printed
+them to every visitor's console. Only the calls go; the behaviour stays — the
+bail-out is upstream's lazy-loading, so `return void console.log(…)` becomes
+`return;`, which returns the same `undefined`.
+
+Each removal is an EXACT byte match that must occur exactly once. A version
+whose minified text differs fails here, loudly, rather than shipping either the
+logs or a half-edited bundle; re-derive the patterns for that version by hand.
 """
 from __future__ import annotations
 
@@ -50,6 +65,32 @@ BUNDLE_URL = "https://unpkg.com/@google/model-viewer@{v}/dist/model-viewer-umd.m
 LICENSE_URL = "https://unpkg.com/@google/model-viewer@{v}/LICENSE"
 
 SOURCEMAP_COMMENT = re.compile(rb"\n?//# sourceMappingURL=[^\n]*\n?$")
+
+#: (upstream bytes, replacement) — each must match exactly once. See the
+#: module docstring; these are the minified forms of upstream 4.3.1's
+#: model-viewer-base.js:263, :522 and :525.
+DEBUG_LOGS = (
+    (b'console.log(`IntersectionObserver fired! isIntersecting: ${e.isIntersecting}`),',
+     b""),
+    (b'console.log(`[$updateSource] called! \\nsrc: ${this.src}\\nextraUrls: '
+     b'${e.join(",")}\\nloaded: ${this.loaded}`),',
+     b""),
+    (b'return void console.log("[$updateSource] BAILING OUT EARLY!");',
+     b"return;"),
+)
+
+
+def strip_debug_logs(bundle: bytes) -> bytes:
+    """Remove upstream's three debug logs; refuse unless each matches once."""
+    for needle, replacement in DEBUG_LOGS:
+        found = bundle.count(needle)
+        if found != 1:
+            raise SystemExit(
+                f"expected exactly one {needle[:60]!r}…, found {found} — "
+                "upstream changed; re-derive DEBUG_LOGS for this version"
+            )
+        bundle = bundle.replace(needle, replacement)
+    return bundle
 
 
 def _current_pin() -> str:
@@ -102,6 +143,9 @@ def main(argv: list[str]) -> int:
         print("  removed the trailing sourceMappingURL comment (see module docstring)")
     else:
         print("  no sourceMappingURL comment found — upstream may have changed")
+
+    stripped = strip_debug_logs(stripped)
+    print(f"  removed upstream's {len(DEBUG_LOGS)} debug console.log calls (see module docstring)")
 
     VENDOR_DIR.mkdir(parents=True, exist_ok=True)
     (VENDOR_DIR / "model-viewer-umd.min.js").write_bytes(stripped)
