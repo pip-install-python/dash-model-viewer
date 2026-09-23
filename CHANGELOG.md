@@ -57,6 +57,25 @@ at the end of this entry.
   itself; what it prevents is the next deploy doing it again. New in
   `lib/poll_guard.py`.
 
+- **A tab left open across a deploy now says it is out of date, instead of
+  silently doing nothing.** Three times on this host a control appeared
+  broken while the code was fine — a switch, then the downloads. Dash fetches
+  the callback map once per tab, but page layouts arrive fresh on every
+  navigation, so after a restart or deploy new controls rendered against a map
+  that had never heard of them. The shell now records a fingerprint in tab
+  memory on first load and compares it on every in-app navigation: `/healthz`'s
+  `build` key (~150–300 B) where the platform sets one, and otherwise a sorted
+  fingerprint of the served `_dash-dependencies`. On a difference it shows the
+  poll guard's sentence, "This page is out of date — reload it." One small GET
+  per navigation; a probe that fails or reads empty says nothing. It cannot
+  rescue a tab older than itself. New in `lib/stale_tab.py`; ops' ruling,
+  SYNC-1.6.46 item 12's third half. The first spec ("baked at registration")
+  was measured unbuildable: 2 callbacks exist when the shell registers, 61 in
+  the served graph. `tests/test_callback_wiring.py` also now catches the
+  duplicate case its sweep was blind to — two callbacks with an identical
+  qualified id overwrite each other in `callback_map`, removing the evidence,
+  so the registration list and the map must now be the same length.
+
 - **`/generative-3d` recorded the wrong provenance in every file it exported.**
   Its poll declared `State("g3-model")` then `State("g3-prompt")` and received
   them transposed, so each saved manifest carried the model id under `prompt`

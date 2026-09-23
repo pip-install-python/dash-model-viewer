@@ -1,6 +1,8 @@
 import dash_mantine_components as dmc
 from dash import Output, Input, callback, clientside_callback, dcc, html, page_container, State
 
+from lib import stale_tab
+
 from components.footer import FOOTER_HEIGHT, create_footer
 from lib.aside import aside_config
 from components.header import create_header
@@ -180,13 +182,16 @@ def create_appshell(data):
             # null/false = visible (default), true = collapsed.
             dcc.Store(id="desktop-navbar-collapsed", storage_type="local"),
             dmc.NotificationContainer(),
+            stale_tab.baseline_store(),
             dmc.AppShell(
                 [
                     create_header(data),
                     create_navbar(data),
                     create_navbar_drawer(data),
                     dmc.AppShellMain(
-                        children=page_container,
+                        # The stale-tab alert sits above every page: it is
+                        # about the TAB, not about whichever page revealed it.
+                        children=[stale_tab.alert(), page_container],
                         id="main-content",   # the skip link's target
                         style={"minHeight": f"calc(100dvh - {HEADER_HEIGHT + FOOTER_HEIGHT}px)"}
                     ),
@@ -324,3 +329,8 @@ def _collapse_aside_without_toc(pathname):
     """Full width for pages that render no aside (1.6.39): /changelog, /api,
     home, the admin pages. The docs pages keep their TOC column."""
     return aside_config(pathname)
+
+
+# A tab whose callback map predates the server's (lib/stale_tab.py): recorded on
+# first load, compared on every in-app navigation.
+stale_tab.register("url")
