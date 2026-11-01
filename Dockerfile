@@ -10,7 +10,7 @@
 # pins that this tag, the CI matrix main and render.yaml all agree, and
 # /healthz reports the serving interpreter so the wire can contradict a
 # stale image rather than inheriting its claim.
-FROM python:3.14-slim
+FROM python:3.15-slim
 
 # Unbuffered stdout, or none of the app's print() diagnostics reliably reach
 # the platform logs: Python block-buffers stdout when it is not a tty, so the
